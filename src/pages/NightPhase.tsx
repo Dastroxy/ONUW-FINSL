@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { GameState, Player, RoleID, Team } from '../types';
-import { performNightAction, advanceNightTurn, toggleMasonReady, COPYCAT_DEFERRED_ROLES } from '../services/firestoreService';
+import { performNightAction, advanceNightTurn, toggleMasonReady, COPYCAT_DEFERRED_ROLES, DOPPELGANGER_IMMEDIATE_ROLES, DOPPELGANGER_DEFERRED_ROLES } from '../services/firestoreService';
 import { ROLE_METADATA } from '../constants';
 import RoleCard from '../components/RoleCard';
 import RoleIcon from '../components/RoleIcons';
@@ -149,10 +149,18 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
       // Handle Grouped Roles
       if (currentRoleID === RoleID.WEREWOLF && me.originalRole === RoleID.WEREWOLF_2) return true;
       if (currentRoleID === RoleID.MASON && me.originalRole === RoleID.MASON_2) return true;
-      if (me.originalRole === RoleID.COPYCAT && me.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(me.currentRole)) {
-          if (me.currentRole === currentRoleID) return true;
-          if (currentRoleID === RoleID.WEREWOLF && me.currentRole === RoleID.WEREWOLF_2) return true;
-          if (currentRoleID === RoleID.MASON && me.currentRole === RoleID.MASON_2) return true;
+      
+      const copiedRole = (me as any).copiedRole || me.currentRole;
+      
+      if (me.originalRole === RoleID.COPYCAT && me.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(copiedRole)) {
+          if (copiedRole === currentRoleID) return true;
+          if (currentRoleID === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
+          if (currentRoleID === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+      }
+      if (me.originalRole === RoleID.DOPPELGANGER && me.currentRole !== RoleID.DOPPELGANGER && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole)) {
+          if (copiedRole === currentRoleID) return true;
+          if (currentRoleID === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
+          if (currentRoleID === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
       }
       return false;
   })();
@@ -793,6 +801,32 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           const c = game.centerCards.find(card => card.id === selectedCenter[0]);
           if (c && !COPYCAT_DEFERRED_ROLES.has(c.role)) {
               const normalizedRole = c.role === RoleID.WEREWOLF_2 ? RoleID.WEREWOLF : c.role === RoleID.MASON_2 ? RoleID.MASON : c.role;
+              setCopycatPhase('COPY');
+              setCopycatTransitionRole(normalizedRole);
+              setTimeout(() => {
+                  setCopycatCopiedRole(normalizedRole);
+                  setCopycatPhase('ACTION');
+                  setStep('SELECTING');
+                  setSelectedPlayers([]);
+                  setSelectedCenter([]);
+                  setRevealedIds({});
+                  setSwappingIds([]);
+                  setInfoMessage('');
+                  setRobberState('IDLE');
+                  setRobberNewRole(null);
+                  setTmStyles({});
+                  setPiState({ checks: 0, becomeEvil: false, finished: false });
+                  setWitchState({ centerId: null, centerRole: null, swapped: false });
+                  setViDirection(null);
+              }, 1200);
+              return;
+          }
+      }
+
+      if (activeRoleID === RoleID.DOPPELGANGER && selectedPlayers.length === 1) {
+          const p = game.players[selectedPlayers[0]];
+          if (p && !p.shielded && DOPPELGANGER_IMMEDIATE_ROLES.has(p.currentRole) && p.originalRole !== RoleID.COPYCAT) {
+              const normalizedRole = p.currentRole === RoleID.WEREWOLF_2 ? RoleID.WEREWOLF : p.currentRole === RoleID.MASON_2 ? RoleID.MASON : p.currentRole;
               setCopycatPhase('COPY');
               setCopycatTransitionRole(normalizedRole);
               setTimeout(() => {

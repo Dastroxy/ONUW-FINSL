@@ -12,6 +12,23 @@ export const COPYCAT_DEFERRED_ROLES = new Set<RoleID>([
   RoleID.DREAM_WOLF, RoleID.AURA_SEER,
 ]);
 
+export const DOPPELGANGER_IMMEDIATE_ROLES = new Set<RoleID>([
+  RoleID.SEER, RoleID.ROBBER, RoleID.TROUBLEMAKER, RoleID.DRUNK,
+  RoleID.SENTINEL, RoleID.ALPHA_WOLF, RoleID.MYSTIC_WOLF, RoleID.APPRENTICE_SEER,
+  RoleID.PARANORMAL_INVESTIGATOR, RoleID.WITCH, RoleID.VILLAGE_IDIOT,
+  RoleID.DISEASED, RoleID.CUPID, RoleID.INSTIGATOR, RoleID.THING
+]);
+
+export const DOPPELGANGER_DEFERRED_ROLES = new Set<RoleID>([
+  RoleID.MASON, RoleID.MASON_2, RoleID.WEREWOLF, RoleID.WEREWOLF_2,
+  RoleID.MINION, RoleID.INSOMNIAC, RoleID.REVEALER, RoleID.CURATOR,
+  RoleID.VAMPIRE, RoleID.THE_COUNT, RoleID.RENFIELD, RoleID.PRIEST,
+  RoleID.ASSASSIN, RoleID.APPRENTICE_ASSASSIN, RoleID.MARKSMAN,
+  RoleID.PICKPOCKET, RoleID.GREMLIN, RoleID.PSYCHIC, RoleID.EXPOSER,
+  RoleID.MORTICIAN, RoleID.AURA_SEER, RoleID.APPRENTICE_TANNER,
+  RoleID.SQUIRE, RoleID.BEHOLDER
+]);
+
 const generateRoomCode = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
 // Helper to shuffle array
@@ -341,8 +358,8 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   const logs: string[] = [...game.logs];
   const actor = { ...game.players[payload.actorId] };
   // Copycat acting as copied role: override originalRole so downstream handlers trigger
-  if (actor.originalRole === RoleID.COPYCAT && actor.currentRole !== RoleID.COPYCAT) {
-      actor.originalRole = actor.currentRole;
+  if (((actor.originalRole === RoleID.COPYCAT || actor.originalRole === RoleID.DOPPELGANGER) && actor.currentRole !== actor.originalRole)) {
+      actor.originalRole = (actor as any).copiedRole || actor.currentRole;
   }
   const roleName = ROLE_METADATA[actor.originalRole]?.name || 'Unknown';
   
@@ -493,9 +510,27 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
           logs.push(`${actor.name} (Doppelgänger) blocked by shield 🛡️`);
       } else {
           const target = game.players[payload.targetPlayerId];
-          const targetMeta = ROLE_METADATA[target.currentRole];
-          updates[`players.${actor.id}.currentRole`] = target.currentRole;
+          const role = target.currentRole;
+          const displayRole = target.originalRole === RoleID.COPYCAT ? RoleID.COPYCAT : role;
+          const targetMeta = ROLE_METADATA[displayRole];
+          updates[`players.${actor.id}.currentRole`] = role;
+          updates[`players.${actor.id}.copiedRole`] = role;
           logs.push(`${actor.name} (Doppelgänger) viewed ${target.name} → ${targetMeta.name} ${targetMeta.icon}`);
+          
+          const queueRole = (role === RoleID.WEREWOLF_2) ? RoleID.WEREWOLF : (role === RoleID.MASON_2) ? RoleID.MASON : role;
+          if (DOPPELGANGER_DEFERRED_ROLES.has(role) && !game.nightQueue.includes(queueRole) && target.originalRole !== RoleID.COPYCAT) {
+              const copiedWakeOrder = ROLE_METADATA[queueRole].wakeOrder;
+              const newQueue = [...game.nightQueue];
+              let insertIdx = newQueue.length;
+              for (let i = 0; i < newQueue.length; i++) {
+                  if (ROLE_METADATA[newQueue[i]].wakeOrder > copiedWakeOrder) {
+                      insertIdx = i;
+                      break;
+                  }
+              }
+              newQueue.splice(insertIdx, 0, queueRole);
+              updates.nightQueue = newQueue;
+          }
       }
   }
 
@@ -506,6 +541,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
           const role = game.centerCards[centerIndex].role;
           const meta = ROLE_METADATA[role];
           updates[`players.${actor.id}.currentRole`] = role;
+          updates[`players.${actor.id}.copiedRole`] = role;
           logs.push(`${actor.name} (Copycat) viewed Center → ${meta.name} ${meta.icon}`);
 
           const queueRole = (role === RoleID.WEREWOLF_2) ? RoleID.WEREWOLF : (role === RoleID.MASON_2) ? RoleID.MASON : role;
@@ -682,9 +718,17 @@ export const advanceNightTurn = async (gameId: string) => {
             if (p.originalRole === queueRole) return true;
             if (queueRole === RoleID.WEREWOLF && p.originalRole === RoleID.WEREWOLF_2) return true;
             if (queueRole === RoleID.MASON && p.originalRole === RoleID.MASON_2) return true;
-            if (p.originalRole === RoleID.COPYCAT && p.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(p.currentRole) && p.currentRole === queueRole) return true;
-            if (p.originalRole === RoleID.COPYCAT && p.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(p.currentRole) && queueRole === RoleID.WEREWOLF && p.currentRole === RoleID.WEREWOLF_2) return true;
-            if (p.originalRole === RoleID.COPYCAT && p.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(p.currentRole) && queueRole === RoleID.MASON && p.currentRole === RoleID.MASON_2) return true;
+            
+            const copiedRole = (p as any).copiedRole || p.currentRole;
+            
+            if (p.originalRole === RoleID.COPYCAT && p.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(copiedRole) && copiedRole === queueRole) return true;
+            if (p.originalRole === RoleID.COPYCAT && p.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(copiedRole) && queueRole === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
+            if (p.originalRole === RoleID.COPYCAT && p.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(copiedRole) && queueRole === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+            
+            if (p.originalRole === RoleID.DOPPELGANGER && p.currentRole !== RoleID.DOPPELGANGER && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole) && copiedRole === queueRole) return true;
+            if (p.originalRole === RoleID.DOPPELGANGER && p.currentRole !== RoleID.DOPPELGANGER && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole) && queueRole === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
+            if (p.originalRole === RoleID.DOPPELGANGER && p.currentRole !== RoleID.DOPPELGANGER && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole) && queueRole === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+            
             return false;
         });
         if (hasActivePlayer) break;
