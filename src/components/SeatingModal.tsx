@@ -28,7 +28,7 @@ const SeatingModal: React.FC<Props> = ({ players, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transform-gpu" />
       <div
         className="relative z-10 w-[90vw] max-w-md p-6 rounded-2xl bg-gray-900/95 border border-white/10 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -49,9 +49,9 @@ const SeatingModal: React.FC<Props> = ({ players, onClose }) => {
             <polygon
               points={polygonPoints}
               fill="none"
-              stroke="#c45d2c"
+              stroke="#12b886"
               strokeWidth="0.5"
-              className="drop-shadow-[0_0_5px_rgba(196,93,44,0.5)]"
+              className="drop-shadow-[0_0_5px_rgba(18,184,134,0.5)]"
             />
             {seatedPlayers.map((_, i) => {
               const { x, y } = getCoordinates(i, totalSeats);
@@ -60,7 +60,7 @@ const SeatingModal: React.FC<Props> = ({ players, onClose }) => {
                   key={`line-${i}`}
                   x1="50" y1="50"
                   x2={x} y2={y}
-                  stroke="#c45d2c"
+                  stroke="#12b886"
                   strokeWidth="0.2"
                   opacity="0.5"
                 />
@@ -69,7 +69,7 @@ const SeatingModal: React.FC<Props> = ({ players, onClose }) => {
           </svg>
 
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <div className="w-20 h-20 rounded-full border border-primary/20 flex items-center justify-center bg-gradient-to-br from-surface to-background shadow-[0_0_25px_rgba(196,93,44,0.15)]">
+            <div className="w-20 h-20 rounded-full border border-primary/20 flex items-center justify-center bg-gradient-to-br from-surface to-background shadow-[0_0_25px_rgba(18,184,134,0.15)]">
               <span className="text-white/20 font-display text-lg tracking-widest font-bold">ONUW</span>
             </div>
           </div>

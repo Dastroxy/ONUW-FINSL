@@ -50,7 +50,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
   }));
 
   return (
-      <div className="min-h-screen relative flex flex-col items-center justify-between p-6 overflow-hidden bg-gradient-to-b from-[#080b14] via-[#0f1628] to-[#0a0e1a]">
+      <div className="min-h-screen relative flex flex-col items-center justify-between p-6 overflow-hidden bg-gradient-to-b from-[#090614] via-[#130e26] to-[#0d0818]">
           
           {/* ANIMATIONS */}
           <style>{`
@@ -71,7 +71,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
           `}</style>
 
           {/* Misty Dawn Glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/3 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(100,80,180,0.2) 0%, rgba(60,40,140,0.12) 40%, rgba(196,93,44,0.06) 70%, transparent 100%)', animation: 'dawn-glow 8s ease-in-out infinite' }}></div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/3 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(100,80,180,0.2) 0%, rgba(60,40,140,0.12) 40%, rgba(18,184,134,0.06) 70%, transparent 100%)', animation: 'dawn-glow 8s ease-in-out infinite' }}></div>
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/4 w-[300px] h-[300px] bg-[#6050b0]/10 rounded-full blur-[80px] pointer-events-none"></div>
 
           {/* Mist Particles */}
@@ -81,7 +81,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
               className="absolute w-1 h-1 rounded-full pointer-events-none"
               style={{
                 left: `${p.left}%`,
-                background: p.id % 3 === 0 ? 'rgba(196,93,44,0.5)' : p.id % 3 === 1 ? 'rgba(100,80,180,0.5)' : 'rgba(232,213,163,0.4)',
+                background: p.id % 3 === 0 ? 'rgba(18,184,134,0.5)' : p.id % 3 === 1 ? 'rgba(100,80,180,0.5)' : 'rgba(220,245,235,0.4)',
                 animation: `float-up ${p.duration}s infinite linear`,
                 animationDelay: `${p.delay}s`
               }}
@@ -96,10 +96,10 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
               
               <div 
                 className={`
-                   text-7xl font-mono font-bold text-[#e8d5a3] transition-all
+                   text-7xl font-mono font-bold text-[#dcf5eb] transition-all
                    ${timeLeft < 10 ? 'text-[#b91c1c] animate-pulse' : ''}
                 `}
-                style={{ animation: timeLeft > 0 ? 'tick 1s infinite' : 'none', textShadow: timeLeft < 10 ? '0 0 20px rgba(185,28,28,0.6)' : '0 0 20px rgba(232,213,163,0.4), 0 0 40px rgba(196,93,44,0.2)' }}
+                style={{ animation: timeLeft > 0 ? 'tick 1s infinite' : 'none', textShadow: timeLeft < 10 ? '0 0 20px rgba(185,28,28,0.6)' : '0 0 20px rgba(220,245,235,0.4), 0 0 40px rgba(18,184,134,0.2)' }}
               >
                   {formatTime(timeLeft)}
               </div>
@@ -109,9 +109,9 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
           {/* NOSTRADAMUS ANNOUNCEMENT */}
           {game.nostradamusAnnouncement && (
               <div className="relative z-20 mt-6 animate-bounce">
-                  <div className="bg-[#0f1628]/90 border-2 border-[#1a1530] px-6 py-4 rounded-xl shadow-[0_0_30px_rgba(100,80,180,0.3),0_0_10px_rgba(232,213,163,0.1)] text-center">
+                  <div className="bg-[#130e26]/90 border-2 border-[#1a122e] px-6 py-4 rounded-xl shadow-[0_0_30px_rgba(100,80,180,0.3),0_0_10px_rgba(220,245,235,0.1)] text-center">
                       <h3 className="text-[#7eb8c9] text-xs font-display font-bold uppercase tracking-widest mb-1">Public Announcement</h3>
-                      <p className="text-[#e8d5a3] font-bold text-lg">{game.nostradamusAnnouncement}</p>
+                      <p className="text-[#dcf5eb] font-bold text-lg">{game.nostradamusAnnouncement}</p>
                   </div>
               </div>
           )}
@@ -119,10 +119,10 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
           {/* REVEALED PLAYERS (Revealer/Exposer) */}
           {revealedPlayers.length > 0 && (
               <div className="relative z-20 mt-6 w-full max-w-2xl flex flex-col items-center animate-fade-in-up">
-                  <h3 className="text-[#c45d2c] font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-                     <span className="w-2 h-2 rounded-full bg-[#c45d2c] animate-pulse"></span>
+                  <h3 className="text-[#12b886] font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                     <span className="w-2 h-2 rounded-full bg-[#12b886] animate-pulse"></span>
                      Revealed Players
-                     <span className="w-2 h-2 rounded-full bg-[#c45d2c] animate-pulse"></span>
+                     <span className="w-2 h-2 rounded-full bg-[#12b886] animate-pulse"></span>
                   </h3>
                   <div className="flex flex-wrap justify-center gap-6">
                       {revealedPlayers.map(p => {
@@ -130,12 +130,12 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                           return (
                               <div key={p.id} className="flex flex-col items-center">
                                   <div className="relative">
-                                      <RoleCard role={p.currentRole} revealed={true} size="sm" className="shadow-[0_0_20px_rgba(196,93,44,0.4)] ring-2 ring-[#c45d2c]" />
-                                      <div className="absolute -top-3 -right-3 w-6 h-6 bg-[#c45d2c] text-black font-bold rounded-full flex items-center justify-center text-xs animate-bounce">!</div>
+                                      <RoleCard role={p.currentRole} revealed={true} size="sm" className="shadow-[0_0_20px_rgba(18,184,134,0.4)] ring-2 ring-[#12b886]" />
+                                      <div className="absolute -top-3 -right-3 w-6 h-6 bg-[#12b886] text-black font-bold rounded-full flex items-center justify-center text-xs animate-bounce">!</div>
                                   </div>
                                   <div className="mt-2 text-center">
-                                      <span className="block text-[#e8d5a3] font-bold text-sm">{p.name}</span>
-                                      <span className="block text-[10px] text-[#c45d2c] uppercase tracking-wide">is {meta.name}</span>
+                                      <span className="block text-[#dcf5eb] font-bold text-sm">{p.name}</span>
+                                      <span className="block text-[10px] text-[#12b886] uppercase tracking-wide">is {meta.name}</span>
                                   </div>
                               </div>
                           );
@@ -156,7 +156,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                             role={card.role} 
                             revealed={isExposed} 
                             size="sm"
-                            className={isExposed ? 'shadow-[0_0_20px_rgba(196,93,44,0.4)] ring-2 ring-[#c45d2c]' : 'shadow-[0_0_20px_rgba(0,0,0,0.5)] border-[#111a2e]/50'}
+                            className={isExposed ? 'shadow-[0_0_20px_rgba(18,184,134,0.4)] ring-2 ring-[#12b886]' : 'shadow-[0_0_20px_rgba(0,0,0,0.5)] border-[#0c0818]/50'}
                           />
                       );
                   })}
@@ -173,8 +173,8 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                   className={`
                     w-full py-4 rounded-xl font-bold text-lg shadow-xl transition-all duration-300 transform border
                     ${isReady 
-                        ? 'bg-[#c45d2c]/20 border-[#c45d2c] text-[#d4783f] cursor-default animate-pulse shadow-[0_0_20px_rgba(196,93,44,0.2)]' 
-                        : 'bg-gradient-to-r from-[#0f1628]/80 to-[#111a2e]/80 backdrop-blur-sm border-[#e8d5a3]/15 hover:border-[#e8d5a3]/40 text-[#e8d5a3] hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(232,213,163,0.1)]'}
+                        ? 'bg-[#12b886]/20 border-[#12b886] text-[#20c997] cursor-default animate-pulse shadow-[0_0_20px_rgba(18,184,134,0.2)]' 
+                        : 'bg-gradient-to-r from-[#130e26]/80 to-[#0c0818]/80 backdrop-blur-sm transform-gpu border-[#dcf5eb]/15 hover:border-[#dcf5eb]/40 text-[#dcf5eb] hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(220,245,235,0.1)]'}
                   `}
               >
                   {isReady ? 'READY' : 'SKIP TO VOTE'}
@@ -186,7 +186,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                       {Array.from({ length: totalPlayers }).map((_, i) => (
                           <div 
                              key={i} 
-                             className={`h-2 w-8 rounded-full transition-all duration-500 ${i < readyCount ? 'bg-[#c45d2c] shadow-[0_0_8px_rgba(196,93,44,0.6)]' : 'bg-[#111a2e]'}`}
+                             className={`h-2 w-8 rounded-full transition-all duration-500 ${i < readyCount ? 'bg-[#12b886] shadow-[0_0_8px_rgba(18,184,134,0.6)]' : 'bg-[#0c0818]'}`}
                           ></div>
                       ))}
                   </div>

@@ -4,12 +4,29 @@ import { useAuth } from '../hooks/useAuth';
 import { createGame, joinGame } from '../services/firestoreService';
 import { useNavigate } from 'react-router-dom';
 
+const PLAYER_AVATARS = [
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka&backgroundColor=c0aede',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Jack&backgroundColor=d1d4f9',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Liam&backgroundColor=ffdfbf',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Sophia&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Maria&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Oliver&backgroundColor=c0aede',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Amaya&backgroundColor=d1d4f9',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Eden&backgroundColor=ffdfbf',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Jocelyn&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Chase&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/9.x/avataaars/svg?seed=Ryker&backgroundColor=c0aede'
+];
+
 const HomePage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
+  const [icon, setIcon] = useState('https://api.dicebear.com/9.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4');
+  const [showIconSelect, setShowIconSelect] = useState(false);
 
   const generateUniqueId = (baseUid: string) => {
     return `${baseUid}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -19,7 +36,7 @@ const HomePage: React.FC = () => {
     if (!name || !user) return;
     try {
       const hostId = generateUniqueId(user.uid);
-      const code = await createGame(name, hostId);
+      const code = await createGame(name, hostId, icon);
       localStorage.setItem(`onuw_player_id_${code}`, hostId);
       navigate(`/game/${code}`);
     } catch (e) {
@@ -33,7 +50,7 @@ const HomePage: React.FC = () => {
     try {
       const code = joinCode.toUpperCase();
       const playerId = generateUniqueId(user.uid);
-      await joinGame(code, name, playerId);
+      await joinGame(code, name, playerId, icon);
       localStorage.setItem(`onuw_player_id_${code}`, playerId);
       navigate(`/game/${code}`);
     } catch (e) {
@@ -53,14 +70,39 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-6 text-center home-bg font-sans">
+      {showIconSelect && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowIconSelect(false)}></div>
+          <div className="relative bg-surface border border-moon/20 rounded-2xl shadow-[0_0_50px_rgba(18,184,134,0.15)] p-6 w-full max-w-md animate-fade-in-up">
+            <h3 className="text-moon font-display text-xl mb-4 text-center">Select Your Avatar</h3>
+            <div className="grid grid-cols-4 gap-3">
+              {PLAYER_AVATARS.map(avatar => (
+                <button 
+                  key={avatar}
+                  onClick={() => { setIcon(avatar); setShowIconSelect(false); }}
+                  className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${icon === avatar ? 'border-primary shadow-[0_0_15px_rgba(18,184,134,0.4)] scale-105' : 'border-transparent hover:border-moon/30 hover:scale-105'}`}
+                >
+                  <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+            <button 
+              onClick={() => setShowIconSelect(false)} 
+              className="mt-6 w-full py-3 rounded-lg bg-forest text-moon hover:bg-bark transition-colors border border-moon/10 font-bold tracking-wider"
+            >
+              CLOSE
+            </button>
+          </div>
+        </div>
+      )}
       <style>{`
         .home-bg {
           background: linear-gradient(160deg, 
-            #080b14 0%, 
+            #090614 0%, 
             #0d1028 30%, 
-            #111a2e 55%, 
+            #0c0818 55%, 
             #0a0820 80%,
-            #080b14 100%);
+            #090614 100%);
         }
 
         .home-title {
@@ -70,8 +112,8 @@ const HomePage: React.FC = () => {
           letter-spacing: 0.05em;
           text-shadow: 
             0 2px 10px rgba(0,0,0,0.9),
-            0 0 40px rgba(196,93,44,0.4),
-            0 0 80px rgba(196,93,44,0.15);
+            0 0 40px rgba(18,184,134,0.4),
+            0 0 80px rgba(18,184,134,0.15);
         }
 
         .home-subtitle {
@@ -109,52 +151,52 @@ const HomePage: React.FC = () => {
 
         .moon-bg {
           position: absolute;
-          top: 8%; right: 8%;
-          width: 220px; height: 220px;
-          opacity: 0.22;
-          filter: blur(0.5px) brightness(1.3);
+          top: 5%; right: 5%;
+          width: 250px; height: 250px;
+          opacity: 0.45;
+          filter: drop-shadow(0 0 20px rgba(18, 184, 134, 0.2));
           z-index: 1;
           pointer-events: none;
-          animation: floatMoon 8s ease-in-out infinite;
+          animation: floatMoon 10s ease-in-out infinite;
         }
 
         @keyframes floatMoon {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-12px) rotate(2deg); }
         }
 
         .moon-glow {
           position: absolute;
-          top: 4%; right: 3%;
-          width: 320px; height: 320px;
+          top: 1%; right: 1%;
+          width: 340px; height: 340px;
           background: radial-gradient(circle, 
-            rgba(232,213,163,0.06) 0%, 
-            rgba(140,130,200,0.04) 30%, 
-            rgba(196,93,44,0.02) 50%, 
+            rgba(220,245,235,0.04) 0%, 
+            rgba(18,184,134,0.03) 30%, 
+            rgba(140,130,200,0.02) 55%, 
             transparent 70%);
           border-radius: 50%;
           z-index: 0;
           pointer-events: none;
-          animation: floatMoon 8s ease-in-out infinite;
+          animation: floatMoon 10s ease-in-out infinite;
         }
 
         .moon-outer-ring {
           position: absolute;
-          top: 5%; right: 4%;
-          width: 300px; height: 300px;
+          top: 2%; right: 2%;
+          width: 320px; height: 320px;
           border-radius: 50%;
-          border: 1px solid rgba(232,213,163,0.04);
-          box-shadow: 0 0 40px rgba(140,130,200,0.05), 0 0 80px rgba(232,213,163,0.03);
+          border: 1px solid rgba(220,245,235,0.02);
+          box-shadow: 0 0 50px rgba(18,184,134,0.04), inset 0 0 30px rgba(220,245,235,0.01);
           z-index: 0;
           pointer-events: none;
-          animation: floatMoon 8s ease-in-out infinite;
+          animation: floatMoon 10s ease-in-out infinite;
         }
 
         .icon-stroke {
-            stroke: #c45d2c;
+            stroke: #12b886;
             stroke-width: 2;
             fill: none;
-            filter: drop-shadow(0 0 2px rgba(196,93,44,0.5));
+            filter: drop-shadow(0 0 2px rgba(18,184,134,0.5));
         }
 
         .buttons-grid {
@@ -174,7 +216,7 @@ const HomePage: React.FC = () => {
           width: 60%;
           max-width: 300px;
           height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(232,213,163,0.15), rgba(196,93,44,0.25), rgba(232,213,163,0.15), transparent);
+          background: linear-gradient(90deg, transparent, rgba(220,245,235,0.15), rgba(18,184,134,0.25), rgba(220,245,235,0.15), transparent);
           position: relative;
           margin: 0 auto;
         }
@@ -184,45 +226,48 @@ const HomePage: React.FC = () => {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          color: rgba(196,93,44,0.3);
+          color: rgba(18,184,134,0.3);
           font-size: 8px;
-          background: #080b14;
+          background: #090614;
           padding: 0 8px;
         }
 
         .btn-card {
-          background: rgba(15,22,40,0.85);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(196,93,44,0.18);
+          background: rgba(19,14,38,0.6);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid rgba(220,245,235,0.15);
           padding: 1.5rem;
-          border-radius: 16px;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          border-radius: 20px;
+          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.4s ease;
           display: flex;
           flex-direction: column;
           align-items: flex-start;
           justify-content: space-between;
-          height: 160px;
+          min-height: 160px;
           text-align: left;
           position: relative;
           overflow: hidden;
           z-index: 10;
-          box-shadow: inset 0 1px 0 rgba(232,213,163,0.04), 0 4px 20px rgba(0,0,0,0.3);
+          box-shadow: inset 0 1px 0 rgba(220,245,235,0.05), 0 8px 32px rgba(0,0,0,0.4);
+          transform: translateZ(0);
+          will-change: transform, box-shadow;
         }
         
         .btn-card:hover {
-          transform: translateY(-5px);
-          background: rgba(26,21,48,0.9);
-          border-color: rgba(232,213,163,0.3);
-          box-shadow: 0 10px 30px -10px rgba(0,0,0,0.6), 0 0 25px rgba(196,93,44,0.12), 0 0 50px rgba(140,130,200,0.05), inset 0 1px 0 rgba(232,213,163,0.08);
+          transform: translateY(-6px) scale(1.02);
+          background: rgba(26,18,46,0.85);
+          border-color: rgba(220,245,235,0.4);
+          box-shadow: 0 15px 40px -10px rgba(0,0,0,0.7), 0 0 30px rgba(18,184,134,0.15), 0 0 60px rgba(140,130,200,0.08), inset 0 1px 0 rgba(220,245,235,0.04);
         }
 
         .btn-card::before {
           content: '';
           position: absolute;
           top: 0; left: 0; right: 0; bottom: 0;
-          background: linear-gradient(45deg, transparent 0%, rgba(196,93,44,0.04) 50%, rgba(232,213,163,0.02) 100%);
+          background: linear-gradient(135deg, rgba(220,245,235,0.05) 0%, rgba(18,184,134,0.04) 50%, transparent 100%);
           opacity: 0;
-          transition: opacity 0.3s;
+          transition: opacity 0.4s ease;
           pointer-events: none;
         }
         .btn-card:hover::before {
@@ -230,52 +275,61 @@ const HomePage: React.FC = () => {
         }
 
         .identity-input {
-          background: transparent;
-          border: none;
-          border-bottom: 2px solid rgba(232,213,163,0.15);
+          background: rgba(19,14,38,0.4);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(220,245,235,0.04);
+          border-bottom: 2px solid rgba(220,245,235,0.25);
           color: white;
           text-align: center;
           font-weight: 800;
           font-size: 1.25rem;
-          padding: 0.75rem;
+          padding: 1rem;
+          border-radius: 12px;
           width: 100%;
-          transition: all 0.3s;
-          letter-spacing: 0.05em;
+          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.4s ease;
+          letter-spacing: 0.1em;
           font-family: 'Rajdhani', sans-serif;
           position: relative; 
           z-index: 20;
+          box-shadow: inset 0 2px 10px rgba(0,0,0,0.2), 0 4px 20px rgba(0,0,0,0.3);
+          transform: translateZ(0);
+          will-change: transform, box-shadow;
         }
         .identity-input:focus {
           outline: none;
-          border-color: #c45d2c;
-          background: rgba(196,93,44,0.05);
-          box-shadow: 0 4px 15px -5px rgba(196,93,44,0.2), 0 1px 0 rgba(232,213,163,0.1);
+          border-color: #12b886;
+          background: rgba(18,184,134,0.04);
+          box-shadow: 0 8px 25px -5px rgba(18,184,134,0.25), 0 0 0 1px rgba(18,184,134,0.5) inset;
+          transform: translateY(-2px);
         }
         .identity-input::placeholder {
-          color: rgba(232,213,163,0.3);
+          color: rgba(220,245,235,0.3);
           font-weight: 500;
         }
 
         .join-room-card {
           display: flex;
-          gap: 0.5rem;
           width: 100%;
           position: relative;
           z-index: 100;
         }
 
         .room-input-field {
-          width: 140px !important;
+          width: 100% !important;
           height: 48px !important;
-          padding: 12px !important;
+          padding: 0 54px 0 16px !important;
           font-family: 'Rajdhani', sans-serif !important;
           font-size: 1.1rem !important;
-          text-align: center !important;
+          text-align: left !important;
           text-transform: uppercase !important;
           letter-spacing: 0.15em !important;
           
-          background: rgba(232,213,163,0.08) !important;
-          border: 2px solid rgba(232,213,163,0.25) !important;
+          background: rgba(19,14,38,0.4) !important;
+          backdrop-filter: blur(12px) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          border: 1px solid rgba(220,245,235,0.04) !important;
+          border-bottom: 2px solid rgba(220,245,235,0.25) !important;
           border-radius: 12px !important;
           color: white !important;
           outline: none !important;
@@ -283,16 +337,21 @@ const HomePage: React.FC = () => {
           pointer-events: auto !important;
           user-select: text !important;
           -webkit-user-select: text !important;
+          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.4s ease !important;
+          box-shadow: inset 0 2px 10px rgba(0,0,0,0.2) !important;
+          transform: translateZ(0);
+          will-change: transform, box-shadow;
         }
 
         .room-input-field:focus {
-          border-color: #c45d2c !important;
-          box-shadow: 0 0 0 3px rgba(196,93,44,0.3), 0 0 15px rgba(196,93,44,0.1) !important;
-          background: rgba(232,213,163,0.12) !important;
+          border-color: #12b886 !important;
+          box-shadow: 0 8px 25px -5px rgba(18,184,134,0.25), 0 0 0 1px rgba(18,184,134,0.5) inset !important;
+          background: rgba(18,184,134,0.04) !important;
         }
         
         .room-input-field::placeholder {
-          color: rgba(232,213,163,0.3) !important;
+          color: rgba(220,245,235,0.3) !important;
+          font-weight: 500 !important;
         }
 
       `}</style>
@@ -323,19 +382,37 @@ const HomePage: React.FC = () => {
            <defs>
               <linearGradient id="blood-moon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                  <stop offset="0%" stopColor="#f0e6cc" />
-                 <stop offset="35%" stopColor="#e8d5a3" />
-                 <stop offset="65%" stopColor="#c45d2c" />
-                 <stop offset="100%" stopColor="#8b1a1a" />
+                 <stop offset="35%" stopColor="#dcf5eb" />
+                 <stop offset="65%" stopColor="#12b886" />
+                 <stop offset="100%" stopColor="#8b113b" />
               </linearGradient>
+              <radialGradient id="moon-crater-1" cx="30%" cy="30%" r="20%">
+                 <stop offset="0%" stopColor="#000" stopOpacity="0.25" />
+                 <stop offset="100%" stopColor="#000" stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="moon-crater-2" cx="70%" cy="60%" r="30%">
+                 <stop offset="0%" stopColor="#000" stopOpacity="0.2" />
+                 <stop offset="100%" stopColor="#000" stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="moon-crater-3" cx="40%" cy="75%" r="15%">
+                 <stop offset="0%" stopColor="#000" stopOpacity="0.15" />
+                 <stop offset="100%" stopColor="#000" stopOpacity="0" />
+              </radialGradient>
+              <filter id="moon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                 <feGaussianBlur stdDeviation="2" result="blur" />
+                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+              <mask id="crescent-mask">
+                 <circle cx="50" cy="50" r="45" fill="white" />
+                 <circle cx="65" cy="40" r="40" fill="black" />
+              </mask>
            </defs>
-           <path 
-             d="M40,20 A30,30 0 1,0 80,60 A25,25 0 1,1 40,20" 
-             fill="url(#blood-moon-gradient)" 
-             stroke="#e8d5a3" 
-             strokeWidth="0.8"
-             strokeLinecap="round"
-             strokeLinejoin="round"
-           />
+           <g mask="url(#crescent-mask)" filter="url(#moon-glow)">
+              <circle cx="50" cy="50" r="45" fill="url(#blood-moon-gradient)" />
+              <circle cx="50" cy="50" r="45" fill="url(#moon-crater-1)" />
+              <circle cx="50" cy="50" r="45" fill="url(#moon-crater-2)" />
+              <circle cx="50" cy="50" r="45" fill="url(#moon-crater-3)" />
+           </g>
         </svg>
       </div>
 
@@ -352,13 +429,23 @@ const HomePage: React.FC = () => {
 
         <div className="ornate-divider" />
 
-        <div className="w-full max-w-sm animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        <div className="w-full max-w-sm animate-fade-in-up flex gap-3" style={{ animationDelay: '0.1s' }}>
+            <div className="relative">
+              <button 
+                onClick={() => setShowIconSelect(true)}
+                className="identity-input !p-0 w-[64px] h-[64px] flex-shrink-0 flex items-center justify-center hover:bg-surface/60 transition-colors overflow-hidden rounded-xl border-2 border-transparent hover:border-primary/50"
+                style={{ marginBottom: 0 }}
+              >
+                {icon.includes('/') ? <img src={icon} alt="avatar" className="w-full h-full object-cover rounded-xl" /> : icon}
+              </button>
+            </div>
+            
             <input
               type="text"
               placeholder="ENTER YOUR NAME"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="identity-input"
+              className="identity-input flex-1"
             />
         </div>
 
@@ -409,7 +496,7 @@ const HomePage: React.FC = () => {
                             id="roomCodeInput"
                             type="text"
                             maxLength={6}
-                            placeholder="XXXXXX"
+                            placeholder="CODE"
                             value={joinCode}
                             autoComplete="off"
                             onChange={(e) => {
@@ -421,7 +508,7 @@ const HomePage: React.FC = () => {
                         <button
                             onClick={handleJoin}
                             disabled={!name || !joinCode}
-                            className="flex-1 bg-primary hover:bg-primary-light text-white h-[48px] rounded-xl font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_15px_rgba(196,93,44,0.3)] border border-primary/50 relative z-50 pointer-events-auto"
+                            className="absolute right-1 top-1 bottom-1 w-10 bg-primary hover:bg-primary-light text-white rounded-[10px] font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_15px_rgba(18,184,134,0.3)] border border-primary/50 pointer-events-auto"
                         >
                             →
                         </button>
@@ -431,7 +518,7 @@ const HomePage: React.FC = () => {
         </div>
         
         {error && (
-            <div className="animate-bounce bg-red-500/20 border border-red-500/50 text-red-200 px-6 py-2 rounded-full font-bold text-xs backdrop-blur-sm">
+            <div className="animate-bounce bg-red-500/20 border border-red-500/50 text-red-200 px-6 py-2 rounded-full font-bold text-xs backdrop-blur-sm transform-gpu">
                 ⚠️ {error}
             </div>
         )}

@@ -161,13 +161,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
      const isThingTarget = currentRoleID === RoleID.THING && game.thingTarget === me.id;
 
      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#050810] text-center p-6 overflow-hidden relative">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#06030c] text-center p-6 overflow-hidden relative">
             <style>{`
                 
 
                 @keyframes glow {
-                  from { filter: drop-shadow(0 0 20px #8b1a1a) saturate(1.5); }
-                  to { filter: drop-shadow(0 0 40px #8b1a1a) saturate(1.5); }
+                  from { filter: drop-shadow(0 0 20px #8b113b) saturate(1.5); }
+                  to { filter: drop-shadow(0 0 40px #8b113b) saturate(1.5); }
                 }
 
                 @keyframes alertPulse {
@@ -178,12 +178,12 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   50% {
                       transform: translate(-50%, -50%) scale(1.02);
                       opacity: 1;
-                      box-shadow: 0 25px 60px rgba(139,26,26,0.8);
+                      box-shadow: 0 25px 60px rgba(139,17,59,0.8);
                   }
                 }
                 
                 @keyframes bgPulse {
-                  0%, 100% { background: rgba(139,26,26,0.95); }
+                  0%, 100% { background: rgba(139,17,59,0.95); }
                   50% { background: rgba(185,28,28,0.98); }
                 }
 
@@ -193,9 +193,12 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   transform: translate(-50%, -50%);
                   z-index: 9999;
                   
-                  background: rgba(139,26,26,0.95);
+                  background: rgba(139,17,59,0.95);
                   backdrop-filter: blur(20px);
-                  border: 3px solid rgba(196,93,44,0.4);
+                  -webkit-backdrop-filter: blur(20px);
+                  transform: translateZ(0);
+                  will-change: transform, backdrop-filter;
+                  border: 3px solid rgba(18,184,134,0.4);
                   border-radius: 24px;
                   padding: 3rem 2rem;
                   
@@ -235,18 +238,18 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                 </div>
             )}
 
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(17,26,46,0.5)_0%,_rgba(5,8,16,1)_70%)] pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(12,8,24,0.5)_0%,_rgba(5,8,16,1)_70%)] pointer-events-none"></div>
             <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 30%, rgba(100,80,160,0.06) 0%, transparent 60%)' }}></div>
             <div className="relative z-10 flex flex-col items-center animate-pulse">
-                <div className="w-28 h-28 mb-6 rounded-full bg-[#0a0e1a] border-2 border-[#e8d5a3]/20 flex items-center justify-center shadow-[0_0_40px_rgba(232,213,163,0.1),_0_0_80px_rgba(100,80,160,0.08)]">
+                <div className="w-28 h-28 mb-6 rounded-full bg-[#0d0818] border-2 border-[#dcf5eb]/20 flex items-center justify-center shadow-[0_0_40px_rgba(220,245,235,0.1),_0_0_80px_rgba(100,80,160,0.08)]">
                     <span className="text-5xl opacity-80">🌙</span>
                 </div>
-                <h2 className="text-2xl font-display font-bold text-moon mb-2 tracking-wide drop-shadow-[0_0_15px_rgba(232,213,163,0.3)]">Night Phase</h2>
+                <h2 className="text-2xl font-display font-bold text-moon mb-2 tracking-wide drop-shadow-[0_0_15px_rgba(220,245,235,0.3)]">Night Phase</h2>
                 <p className="text-[#8090b0] mb-8">
                     <span className="text-primary font-bold">Someone</span> is waking up...
                 </p>
                 <div className="w-48 h-1.5 bg-[#151a30] rounded-full overflow-hidden border border-[#2a2545]/50">
-                    <div className="bg-gradient-to-r from-primary to-primary-light h-full transition-all duration-1000 shadow-[0_0_10px_rgba(196,93,44,0.5)]" style={{ width: `${((game.currentNightRoleIndex) / game.nightQueue.length) * 100}%` }}></div>
+                    <div className="bg-gradient-to-r from-primary to-primary-light h-full transition-all duration-1000 shadow-[0_0_10px_rgba(18,184,134,0.5)]" style={{ width: `${((game.currentNightRoleIndex) / game.nightQueue.length) * 100}%` }}></div>
                 </div>
             </div>
         </div>
@@ -868,7 +871,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                 className={`
                     relative w-28 h-40 rounded-xl transition-all duration-500 transform-style-3d cursor-pointer group
                     ${isSelected 
-                        ? 'ring-4 ring-primary scale-110 -translate-y-2 z-10 shadow-[0_0_20px_rgba(196,93,44,0.5)]' 
+                        ? 'ring-4 ring-primary scale-110 -translate-y-2 z-10 shadow-[0_0_20px_rgba(18,184,134,0.5)]' 
                         : 'scale-110 hover:scale-115 z-0'
                     }
                     ${style ? 'troublemaker-card' : isSwapping ? 'animate-swap' : ''}
@@ -887,7 +890,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                     ${isRevealed ? 'rotate-y-180' : ''}
                 `}>
                     {/* FRONT (Hidden State) */}
-                    <div className="absolute inset-0 backface-hidden bg-[#0c0e1a] border-2 border-[#2a2545] rounded-xl flex items-center justify-center shadow-lg" style={{ boxShadow: 'inset 0 1px 0 rgba(232,213,163,0.04), 0 0 8px rgba(0,0,0,0.5)' }}>
+                    <div className="absolute inset-0 backface-hidden bg-[#0c0e1a] border-2 border-[#2a2545] rounded-xl flex items-center justify-center shadow-lg" style={{ boxShadow: 'inset 0 1px 0 rgba(220,245,235,0.04), 0 0 8px rgba(0,0,0,0.5)' }}>
                         <span className="text-4xl font-display text-[#3a3555] font-bold opacity-60">?</span>
                         {isSelected && <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-xs text-white">✓</div>}
                     </div>
@@ -936,14 +939,14 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   @keyframes cardSwapLeft { 0% { transform: translateX(0); z-index: 10; } 50% { transform: translateX(-50%) scale(0.9); z-index: 10; } 100% { transform: translateX(-100%); z-index: 10; } }
                   .animate-swap-right { animation: cardSwapRight 0.6s ease-in-out forwards; }
                   .animate-swap-left { animation: cardSwapLeft 0.6s ease-in-out forwards; }
-                  .glow-text { text-shadow: 0 0 20px rgba(196,93,44,0.6); }
+                  .glow-text { text-shadow: 0 0 20px rgba(18,184,134,0.6); }
                `}</style>
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[200px] bg-primary/10 blur-[80px] pointer-events-none"></div>
                <div className="flex gap-8 relative mb-12">
                    <div className="flex flex-col items-center">
                        <div className={`relative w-28 h-40 ${robberState === 'SWAPPING' ? 'animate-swap-right' : 'translate-x-[100%]'}`}>
                            {robberState === 'REVEALED' ? (
-                               <RoleCard role={robberNewRole!} revealed={true} size="md" className="border-4 border-primary shadow-[0_0_30px_rgba(196,93,44,0.6)] animate-flip-in" />
+                               <RoleCard role={robberNewRole!} revealed={true} size="md" className="border-4 border-primary shadow-[0_0_30px_rgba(18,184,134,0.6)] animate-flip-in" />
                            ) : (
                                <div className="w-full h-full bg-gray-800 border-2 border-gray-600 rounded-xl flex items-center justify-center">
                                    <span className="text-4xl text-gray-500 font-display">?</span>
@@ -1072,7 +1075,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                             role={psychicSeenRole || RoleID.VILLAGER} 
                             revealed={true} 
                             size="lg" 
-                            className="shadow-[0_0_50px_rgba(196,93,44,0.6)] border-4 border-primary scale-110"
+                            className="shadow-[0_0_50px_rgba(18,184,134,0.6)] border-4 border-primary scale-110"
                         />
                     </div>
                 ) : (
@@ -1208,7 +1211,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
             .animate-swap { animation: swap-shake 0.5s ease-in-out; border-color: #facc15 !important; }
             @keyframes flip-in { 0% { transform: rotateY(90deg); opacity: 0; } 100% { transform: rotateY(0); opacity: 1; } }
             .animate-flip-in { animation: flip-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-            .nostradamus-result { font-family: 'Inter', 'SF Pro', -apple-system, sans-serif; text-shadow: 0 0 20px rgba(196,93,44,0.4); }
+            .nostradamus-result { font-family: 'Inter', 'SF Pro', -apple-system, sans-serif; text-shadow: 0 0 20px rgba(18,184,134,0.4); }
             
             @keyframes troublemaker-swap {
               0% { transform: translate(0, 0) rotate(0deg); }
@@ -1243,6 +1246,8 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   inset 0 0 10px rgba(255,255,255,0.2);
                 animation: shieldPulse 2s infinite ease-in-out;
                 backdrop-filter: blur(2px);
+                -webkit-backdrop-filter: blur(2px);
+                transform: translateZ(0);
                 pointer-events: none;
             }
             @keyframes shieldPulse {
@@ -1251,11 +1256,11 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
             }
           `}</style>
           
-          <div className="absolute inset-0 bg-gradient-to-b from-[#050810] via-background to-[#050810] z-0"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-[#06030c] via-background to-[#06030c] z-0"></div>
           <div className="absolute inset-0 pointer-events-none z-0" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(100,80,160,0.04) 0%, transparent 50%)' }}></div>
 
-          <div className={`relative z-10 pt-4 pb-2 px-4 text-center border-b border-[#e8d5a3]/8 backdrop-blur-md flex flex-col items-center
-             ${(isSquire && squireEvilPlayers.length > 0) || activeRoleID === RoleID.WEREWOLF || activeRoleID === RoleID.MINION || piState.becomeEvil ? 'bg-red-900/20 shadow-[0_0_30px_rgba(153,27,27,0.3)]' : 'bg-[#0a0e1a]/60'}
+          <div className={`relative z-10 pt-4 pb-2 px-4 text-center border-b border-[#dcf5eb]/8 backdrop-blur-md transform-gpu flex flex-col items-center
+             ${(isSquire && squireEvilPlayers.length > 0) || activeRoleID === RoleID.WEREWOLF || activeRoleID === RoleID.MINION || piState.becomeEvil ? 'bg-red-900/20 shadow-[0_0_30px_rgba(153,27,27,0.3)]' : 'bg-[#0d0818]/60'}
           `}>
               <div className="flex items-center gap-3 mb-1">
                   <RoleIcon role={activeRoleID} className="w-8 h-8" />
@@ -1396,7 +1401,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                                     innerRef={(el) => { if (el) itemsRef.current.set(p.id, el); }}
                                     style={tmStyles[p.id]}
                                     // Add glow for Alpha Wolf
-                                    className={activeRoleID === RoleID.ALPHA_WOLF && p.id !== me.id ? "hover:ring-2 hover:ring-primary hover:shadow-[0_0_15px_rgba(196,93,44,0.5)]" : ""}
+                                    className={activeRoleID === RoleID.ALPHA_WOLF && p.id !== me.id ? "hover:ring-2 hover:ring-primary hover:shadow-[0_0_15px_rgba(18,184,134,0.5)]" : ""}
                                   />
                               );
                           })}
@@ -1412,7 +1417,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               )}
           </div>
 
-          <div className="relative z-20 p-6 bg-gradient-to-t from-[#050810] via-[#050810]/90 to-transparent border-t border-[#e8d5a3]/5">
+          <div className="relative z-20 p-6 bg-gradient-to-t from-[#06030c] via-[#06030c]/90 to-transparent border-t border-[#dcf5eb]/5">
               {step === 'SELECTING' ? (
                   activeRoleID === RoleID.NOSTRADAMUS ? (
                       <button onClick={handleNostraFinish} disabled={selectedPlayers.length < 2} className={`w-full py-4 rounded-2xl font-black text-xl tracking-widest shadow-lg transition-all transform ${selectedPlayers.length === 2 ? 'bg-gradient-to-r from-primary to-accent text-white hover:scale-[1.02] shadow-primary/30' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}>{selectedPlayers.length < 2 ? 'SELECT 2 CARDS' : 'CONTINUE →'}</button>

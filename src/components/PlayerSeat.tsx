@@ -25,7 +25,7 @@ const PlayerSeat: React.FC<Props> = ({ x, y, label, playername, isTaken, isMe, o
         className={`
           w-16 h-16 rounded-full flex items-center justify-center border-2 font-bold transition-all duration-300 relative
           ${isMe 
-            ? 'bg-primary border-moon text-white scale-110 shadow-[0_0_20px_rgba(196,93,44,0.8)] ring-2 ring-primary-light z-40' 
+            ? 'bg-primary border-moon text-white scale-110 shadow-[0_0_20px_rgba(18,184,134,0.8)] ring-2 ring-primary-light z-40' 
             : isTaken 
               ? 'bg-surface border-forest text-moon/50 cursor-not-allowed opacity-70' 
               : 'bg-forest/80 border-moon/30 text-moon/70 hover:scale-110 hover:border-primary hover:text-white hover:bg-forest animate-pulse shadow-lg cursor-pointer'}

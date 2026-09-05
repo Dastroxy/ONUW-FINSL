@@ -52,16 +52,16 @@ const GameBoard: React.FC<Props> = ({ totalSeats, players, myId, onSeatClick }) 
   return (
     <div className="relative w-full aspect-square max-w-md mx-auto">
        {/* Background Decoration */}
-       <div className="absolute inset-0 rounded-full bg-black/20 shadow-2xl backdrop-blur-sm border border-white/5 transform scale-110"></div>
+       <div className="absolute inset-0 rounded-full bg-black/20 shadow-2xl backdrop-blur-sm transform-gpu border border-white/5 transform scale-110"></div>
        
        {/* Dynamic Polygon SVG */}
        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40" viewBox="0 0 100 100">
           <polygon 
             points={polygonPoints} 
             fill="none" 
-            stroke="#c45d2c" 
+            stroke="#12b886" 
             strokeWidth="0.5" 
-            className="drop-shadow-[0_0_5px_rgba(196,93,44,0.5)] transition-all duration-500 ease-in-out"
+            className="drop-shadow-[0_0_5px_rgba(18,184,134,0.5)] transition-all duration-500 ease-in-out"
           />
           {/* Optional: Lines to center for more structure */}
           {Array.from({ length: totalSeats }).map((_, i) => {
@@ -71,7 +71,7 @@ const GameBoard: React.FC<Props> = ({ totalSeats, players, myId, onSeatClick }) 
                  key={`line-${i}`}
                  x1="50" y1="50"
                  x2={x} y2={y}
-                 stroke="#c45d2c"
+                 stroke="#12b886"
                  strokeWidth="0.2"
                  opacity="0.5"
                  className="transition-all duration-500 ease-in-out"
@@ -81,7 +81,7 @@ const GameBoard: React.FC<Props> = ({ totalSeats, players, myId, onSeatClick }) 
        </svg>
 
        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-         <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-gradient-to-br from-bark to-background shadow-[0_0_25px_rgba(196,93,44,0.15)]">
+         <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-gradient-to-br from-bark to-background shadow-[0_0_25px_rgba(18,184,134,0.15)]">
             <span className="text-moon/20 font-display text-xl tracking-widest font-bold">ONUW</span>
          </div>
        </div>

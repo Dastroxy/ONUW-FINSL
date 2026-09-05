@@ -50,7 +50,7 @@ const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, s
     [Team.MINORITY]: 'bg-minority'
   }[metadata.team];
 
-  const revealedBg = 'linear-gradient(145deg, #0e0f1a 0%, #1a1530 40%, #0d0e18 100%)';
+  const revealedBg = 'linear-gradient(145deg, #0e0f1a 0%, #1a122e 40%, #0d0e18 100%)';
   const unrevealedBg = 'linear-gradient(145deg, #0c0d18 0%, #151228 50%, #0a0b14 100%)';
 
   const noiseOverlay = (
@@ -66,17 +66,20 @@ const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, s
 
   const cardBack = (
     <div
-      className={`absolute inset-0 rounded-xl overflow-hidden ${sizeClasses[size]}`}
+      className={`absolute inset-0 rounded-2xl overflow-hidden ${sizeClasses[size]}`}
       style={{
         background: unrevealedBg,
-        border: '2px solid #2a2545',
-        boxShadow: '0 0 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(232,213,163,0.04)',
-        backfaceVisibility: 'hidden'
+        border: '2px solid rgba(220, 245, 235, 0.15)',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.6), inset 0 2px 10px rgba(220,245,235,0.06)',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        transform: 'translateZ(0)',
+        WebkitTransform: 'translateZ(0)'
       }}
     >
       {noiseOverlay}
-      <div className="absolute inset-0 flex items-center justify-center opacity-30">
-        <svg viewBox="0 0 40 50" className={size === 'sm' ? 'w-6 h-8' : size === 'md' ? 'w-8 h-10' : 'w-16 h-20'} fill="none" stroke="#c45d2c" strokeWidth="1.5" strokeLinecap="round">
+      <div className="absolute inset-0 flex items-center justify-center opacity-40">
+        <svg viewBox="0 0 40 50" className={size === 'sm' ? 'w-6 h-8' : size === 'md' ? 'w-8 h-10' : 'w-16 h-20'} fill="none" stroke="#12b886" strokeWidth="1.5" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 8px rgba(18,184,134,0.4))' }}>
           <path d="M10 5 L8 20 L6 35" opacity="0.7" />
           <path d="M18 3 L16 22 L15 40" opacity="0.8" />
           <path d="M26 6 L25 18 L23 32" opacity="0.6" />
@@ -88,13 +91,15 @@ const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, s
 
   const cardFront = (
     <div
-      className={`absolute inset-0 rounded-xl overflow-hidden ${sizeClasses[size]}`}
+      className={`absolute inset-0 rounded-2xl overflow-hidden ${sizeClasses[size]}`}
       style={{
         background: revealedBg,
         border: `2px solid ${teamBorderColor}`,
-        boxShadow: `0 0 12px ${teamBorderColor}33, 0 0 30px ${teamBorderColor}11, inset 0 1px 0 rgba(255,255,255,0.05)`,
+        boxShadow: `0 12px 40px ${teamBorderColor}44, 0 0 40px ${teamBorderColor}22, inset 0 2px 10px rgba(255,255,255,0.08)`,
         backfaceVisibility: 'hidden',
-        transform: 'rotateY(180deg)'
+        WebkitBackfaceVisibility: 'hidden',
+        transform: 'rotateY(180deg) translateZ(0)',
+        WebkitTransform: 'rotateY(180deg) translateZ(0)'
       }}
     >
       {noiseOverlay}
@@ -126,7 +131,10 @@ const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, s
           className="relative w-full h-full transition-transform duration-700"
           style={{
             transformStyle: 'preserve-3d',
-            transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+            WebkitTransformStyle: 'preserve-3d',
+            transform: flipped ? 'rotateY(180deg) translateZ(0)' : 'rotateY(0deg) translateZ(0)',
+            WebkitTransform: flipped ? 'rotateY(180deg) translateZ(0)' : 'rotateY(0deg) translateZ(0)',
+            willChange: 'transform'
           }}
         >
           {cardBack}
@@ -150,7 +158,7 @@ const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, s
         border: `2px solid ${revealed ? teamBorderColor : '#2a2545'}`,
         boxShadow: revealed
           ? `0 0 12px ${teamBorderColor}33, 0 0 30px ${teamBorderColor}11, inset 0 1px 0 rgba(255,255,255,0.05)`
-          : '0 0 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(232,213,163,0.04)'
+          : '0 0 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(220,245,235,0.04)'
       }}
     >
       {noiseOverlay}
@@ -167,7 +175,7 @@ const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, s
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center opacity-30">
-             <svg viewBox="0 0 40 50" className={size === 'sm' ? 'w-6 h-8' : size === 'md' ? 'w-8 h-10' : 'w-16 h-20'} fill="none" stroke="#c45d2c" strokeWidth="1.5" strokeLinecap="round">
+             <svg viewBox="0 0 40 50" className={size === 'sm' ? 'w-6 h-8' : size === 'md' ? 'w-8 h-10' : 'w-16 h-20'} fill="none" stroke="#12b886" strokeWidth="1.5" strokeLinecap="round">
                <path d="M10 5 L8 20 L6 35" opacity="0.7" />
                <path d="M18 3 L16 22 L15 40" opacity="0.8" />
                <path d="M26 6 L25 18 L23 32" opacity="0.6" />

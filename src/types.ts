@@ -77,6 +77,7 @@ export enum Team {
 export interface Player {
   id: string;
   name: string;
+  icon?: string;
   seatId: number | null;
   originalRole: RoleID;
   currentRole: RoleID;

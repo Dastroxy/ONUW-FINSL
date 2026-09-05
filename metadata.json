@@ -1,0 +1,6 @@
+{
+  "name": "One Night Ultimate Werewolf",
+  "description": "A web-based implementation of the One Night Ultimate Werewolf party game.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

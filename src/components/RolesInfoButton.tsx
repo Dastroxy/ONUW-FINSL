@@ -16,7 +16,7 @@ const RolesInfoButton: React.FC<Props> = ({ roles }) => {
       {/* Floating Action Button */}
       <button 
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-primary/85 border-2 border-white/30 backdrop-blur-md text-white font-black text-lg shadow-[0_4px_20px_rgba(196,93,44,0.5)] transition-all hover:scale-110 hover:shadow-[0_6px_30px_rgba(196,93,44,0.7)] flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-primary/85 border-2 border-white/30 backdrop-blur-md transform-gpu text-white font-black text-lg shadow-[0_4px_20px_rgba(18,184,134,0.5)] transition-all hover:scale-110 hover:shadow-[0_6px_30px_rgba(18,184,134,0.7)] flex items-center justify-center"
         aria-label="Show Roles Info"
       >
         i
@@ -25,7 +25,7 @@ const RolesInfoButton: React.FC<Props> = ({ roles }) => {
       {/* Modal Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in" 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transform-gpu animate-fade-in" 
           onClick={() => setIsOpen(false)}
         >
           {/* Modal Content */}
@@ -34,7 +34,7 @@ const RolesInfoButton: React.FC<Props> = ({ roles }) => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/20 backdrop-blur-md sticky top-0 z-10">
+            <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/20 backdrop-blur-md transform-gpu sticky top-0 z-10">
               <h2 
                 className="text-xl font-black text-white tracking-widest font-display"
               >

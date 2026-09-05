@@ -148,7 +148,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                         />
                         {eliminated.includes(p.id) && (
                             <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                                <span className="text-red-600 font-black text-5xl -rotate-12 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] border-4 border-red-600 px-4 py-1 rounded-xl bg-black/30 backdrop-blur-sm">DIED</span>
+                                <span className="text-red-600 font-black text-5xl -rotate-12 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] border-4 border-red-600 px-4 py-1 rounded-xl bg-black/30 backdrop-blur-sm transform-gpu">DIED</span>
                             </div>
                         )}
                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-2 py-1 rounded text-xs whitespace-nowrap text-gray-300 pointer-events-none z-20 font-bold">
@@ -156,7 +156,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                         </div>
                      </div>
                      <div className="mt-3 text-center">
-                         <div className="font-black text-white text-lg leading-none tracking-wide drop-shadow-[0_0_8px_rgba(232,213,163,0.15)]">{p.name}</div>
+                         <div className="font-black text-white text-lg leading-none tracking-wide drop-shadow-[0_0_8px_rgba(220,245,235,0.15)]">{p.name}</div>
                          <div className={`flex items-center justify-center gap-1.5 text-xs font-bold mt-1 uppercase tracking-wider
                             ${ROLE_METADATA[p.currentRole]?.team === Team.GOOD ? 'text-good' : 
                               ROLE_METADATA[p.currentRole]?.team === Team.EVIL ? 'text-evil' : 'text-independent'}
@@ -173,13 +173,13 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
 
   return (
       <div className="min-h-screen relative flex flex-col items-center p-6 overflow-y-auto overflow-x-hidden"
-        style={{ background: 'linear-gradient(160deg, #080b14 0%, #0d1228 30%, #12082a 60%, #080b14 100%)' }}
+        style={{ background: 'linear-gradient(160deg, #090614 0%, #0d1228 30%, #12082a 60%, #090614 100%)' }}
       >
           
           <div className={`absolute inset-0 transition-opacity duration-1000 fixed ${stage >= 1 ? 'opacity-40' : 'opacity-0'}
-             ${game.winningTeam === Team.GOOD ? 'bg-gradient-to-br from-[#0a2a3a] via-[#080b14] to-[#0d1a30]' : 
-               game.winningTeam === Team.EVIL ? 'bg-gradient-to-br from-[#2a0515] via-[#080b14] to-[#1a0820]' : 
-               'bg-gradient-to-br from-[#2a1f08] via-[#080b14] to-[#1a1530]'}
+             ${game.winningTeam === Team.GOOD ? 'bg-gradient-to-br from-[#0a2a3a] via-[#090614] to-[#0d1a30]' : 
+               game.winningTeam === Team.EVIL ? 'bg-gradient-to-br from-[#2a0515] via-[#090614] to-[#1a0820]' : 
+               'bg-gradient-to-br from-[#2a1f08] via-[#090614] to-[#1a122e]'}
           `}></div>
 
           <div className={`absolute inset-0 opacity-[0.04] pointer-events-none animate-mist`}
@@ -198,20 +198,20 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                    game.winningTeam === Team.EVIL ? 'from-evil to-[#6a1010]' : 'from-independent to-[#a07820]'}
               `}
                 style={{ 
-                  filter: 'drop-shadow(0 0 40px rgba(232,213,163,0.25)) drop-shadow(0 0 80px rgba(196,93,44,0.15))',
-                  textShadow: '0 0 60px rgba(232,213,163,0.2)'
+                  filter: 'drop-shadow(0 0 40px rgba(220,245,235,0.25)) drop-shadow(0 0 80px rgba(18,184,134,0.15))',
+                  textShadow: '0 0 60px rgba(220,245,235,0.2)'
                 }}
               >
                   {headerText}
               </h1>
-              <p className="text-moon/50 text-sm font-bold uppercase tracking-[0.5em] mt-2 animate-pulse drop-shadow-[0_0_10px_rgba(232,213,163,0.1)]">
+              <p className="text-moon/50 text-sm font-bold uppercase tracking-[0.5em] mt-2 animate-pulse drop-shadow-[0_0_10px_rgba(220,245,235,0.1)]">
                   {game.winner?.replace(/!.*$/, '')}
               </p>
           </div>
 
           {stage >= 2 && eliminated.length > 0 && (
               <div className="relative z-10 mb-10 animate-fade-in-up">
-                  <div className="bg-[#1a1530]/60 border border-evil/30 px-6 py-3 rounded-full flex items-center gap-4 shadow-[0_0_25px_rgba(139,26,26,0.25),0_0_50px_rgba(90,70,180,0.1)] backdrop-blur-md">
+                  <div className="bg-[#1a122e]/60 border border-evil/30 px-6 py-3 rounded-full flex items-center gap-4 shadow-[0_0_25px_rgba(139,17,59,0.25),0_0_50px_rgba(90,70,180,0.1)] backdrop-blur-md transform-gpu">
                       <span className="text-evil font-bold text-sm uppercase tracking-wider drop-shadow-[0_0_6px_rgba(185,28,28,0.4)]">Eliminated:</span>
                       <div className="flex gap-2">
                           {eliminated.map(id => (
@@ -230,7 +230,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                    {winners.length > 0 && (
                        <div className="flex flex-col items-center">
                            <h2 className="text-4xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-moon to-primary mb-8 tracking-widest"
-                             style={{ filter: 'drop-shadow(0 0 20px rgba(232,213,163,0.2))' }}
+                             style={{ filter: 'drop-shadow(0 0 20px rgba(220,245,235,0.2))' }}
                            >
                                WINNERS 👑
                            </h2>
@@ -253,11 +253,11 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
           {stage >= 4 && (
               <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-6 animate-fade-in-up mb-12">
                   
-                  <div className="w-full rounded-xl p-4 backdrop-blur-md"
+                  <div className="w-full rounded-xl p-4 backdrop-blur-md transform-gpu"
                     style={{
-                      background: 'rgba(26, 21, 48, 0.5)',
-                      border: '1px solid rgba(232, 213, 163, 0.12)',
-                      boxShadow: '0 4px 30px rgba(0,0,0,0.4), 0 0 20px rgba(232,213,163,0.04), inset 0 1px 0 rgba(255,255,255,0.03)'
+                      background: 'rgba(26, 18, 46, 0.5)',
+                      border: '1px solid rgba(220, 245, 235, 0.12)',
+                      boxShadow: '0 4px 30px rgba(0,0,0,0.4), 0 0 20px rgba(220,245,235,0.04), inset 0 1px 0 rgba(255,255,255,0.03)'
                     }}
                   >
                         <h3 className="text-white/80 text-[10px] font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
@@ -279,11 +279,11 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                         </div>
                   </div>
 
-                  <div className="w-full max-w-2xl rounded-2xl p-6 backdrop-blur-md"
+                  <div className="w-full max-w-2xl rounded-2xl p-6 backdrop-blur-md transform-gpu"
                     style={{
-                      background: 'rgba(17, 26, 46, 0.7)',
-                      border: '1px solid rgba(232, 213, 163, 0.1)',
-                      boxShadow: '0 4px 30px rgba(0,0,0,0.5), 0 0 25px rgba(232,213,163,0.03), inset 0 1px 0 rgba(255,255,255,0.03)'
+                      background: 'rgba(12, 8, 24, 0.7)',
+                      border: '1px solid rgba(220, 245, 235, 0.1)',
+                      boxShadow: '0 4px 30px rgba(0,0,0,0.5), 0 0 25px rgba(220,245,235,0.03), inset 0 1px 0 rgba(255,255,255,0.03)'
                     }}
                   >
                       <h3 className="text-white/80 font-bold uppercase tracking-widest mb-4 flex justify-between text-xs">
@@ -306,9 +306,9 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                    onClick={handleReset}
                    className="px-10 py-4 text-white font-black text-xl rounded-2xl transition-all hover:scale-105 active:scale-95"
                    style={{
-                     background: 'linear-gradient(135deg, #c45d2c 0%, #d4783f 50%, #c45d2c 100%)',
-                     boxShadow: '0 0 25px rgba(196,93,44,0.4), 0 0 50px rgba(196,93,44,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
-                     border: '1px solid rgba(232,213,163,0.2)'
+                     background: 'linear-gradient(135deg, #12b886 0%, #20c997 50%, #12b886 100%)',
+                     boxShadow: '0 0 25px rgba(18,184,134,0.4), 0 0 50px rgba(18,184,134,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
+                     border: '1px solid rgba(220,245,235,0.2)'
                    }}
                  >
                    NEXT GAME
@@ -316,11 +316,11 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
               )}
               <button 
                  onClick={handleLeave}
-                 className="px-8 py-4 font-bold rounded-2xl transition-all hover:scale-105 backdrop-blur-md"
+                 className="px-8 py-4 font-bold rounded-2xl transition-all hover:scale-105 backdrop-blur-md transform-gpu"
                  style={{
-                   background: 'rgba(15, 22, 40, 0.7)',
-                   color: 'rgba(232, 213, 163, 0.5)',
-                   border: '1px solid rgba(232, 213, 163, 0.1)',
+                   background: 'rgba(19, 14, 38, 0.7)',
+                   color: 'rgba(220, 245, 235, 0.5)',
+                   border: '1px solid rgba(220, 245, 235, 0.1)',
                    boxShadow: '0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)'
                  }}
               >
@@ -340,7 +340,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
             }
             .custom-scrollbar::-webkit-scrollbar { width: 4px; }
             .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(232,213,163,0.15); border-radius: 10px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(220,245,235,0.15); border-radius: 10px; }
           `}</style>
       </div>
   );

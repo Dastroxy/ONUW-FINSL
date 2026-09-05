@@ -21,13 +21,14 @@ const shuffle = <T,>(array: T[]): T[] => {
     .map(({ value }) => value);
 };
 
-export const createGame = async (hostName: string, hostUid: string) => {
+export const createGame = async (hostName: string, hostUid: string, icon?: string) => {
   const roomCode = generateRoomCode();
   const gameRef = doc(db, GAMES_COLLECTION, roomCode);
   
   const hostPlayer: Player = {
     id: hostUid,
     name: hostName,
+    icon: icon,
     seatId: null,
     originalRole: RoleID.VILLAGER, // Placeholder
     currentRole: RoleID.VILLAGER,
@@ -68,18 +69,26 @@ export const createGame = async (hostName: string, hostUid: string) => {
   return roomCode;
 };
 
-export const joinGame = async (gameId: string, playerName: string, playerUid: string) => {
+export const joinGame = async (gameId: string, playerName: string, playerUid: string, icon?: string) => {
   const gameRef = doc(db, GAMES_COLLECTION, gameId);
   const snap = await getDoc(gameRef);
   if (!snap.exists()) throw new Error("Game not found");
   
   const game = snap.data() as GameState;
   if (game.phase !== GamePhase.LOBBY) throw new Error("Game already started");
-  if (game.players[playerUid]) return; // Already joined
+  if (game.players[playerUid]) {
+    // If player rejoins, update their icon and name
+    await updateDoc(gameRef, {
+      [`players.${playerUid}.name`]: playerName,
+      [`players.${playerUid}.icon`]: icon || null
+    });
+    return;
+  }
 
   const newPlayer: Player = {
     id: playerUid,
     name: playerName,
+    icon: icon,
     seatId: null,
     originalRole: RoleID.VILLAGER,
     currentRole: RoleID.VILLAGER,

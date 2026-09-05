@@ -16,7 +16,7 @@ const SeatingButton: React.FC<Props> = ({ players }) => {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 z-50 w-12 h-12 rounded-full bg-surface/90 border border-primary/30 shadow-[0_4px_20px_rgba(196,93,44,0.3)] hover:bg-primary/30 hover:scale-110 active:scale-95 transition-all flex items-center justify-center"
+        className="fixed bottom-6 left-6 z-50 w-12 h-12 rounded-full bg-surface/90 border border-primary/30 shadow-[0_4px_20px_rgba(18,184,134,0.3)] hover:bg-primary/30 hover:scale-110 active:scale-95 transition-all flex items-center justify-center"
         title="View Seating"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-moon">
