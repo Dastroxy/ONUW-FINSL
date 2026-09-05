@@ -664,12 +664,32 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
     (actor.originalRole === RoleID.DOPPELGANGER && (actor as any).copiedRole === RoleID.CURATOR);
 
   if (isCurator && (payload.actionType === 'PLACE_TOKEN' || payload.actionType === 'MARK') && payload.targetPlayerId) {
-      if (game.players[payload.targetPlayerId].shielded) {
-          logs.push(`${actor.name} (Curator) tried to place an Artifact Token, but ${game.players[payload.targetPlayerId].name} was shielded 🛡️`);
-      } else {
-          const chosenArtifact = payload.artifactToken || ArtifactID.VOID_OF_NOTHINGNESS;
+      const targetPlayer = game.players[payload.targetPlayerId];
+      if (targetPlayer?.shielded) {
+          logs.push(`${actor.name} (Curator) tried to place an Artifact Token, but ${targetPlayer.name} was shielded 🛡️`);
+      } else if (targetPlayer) {
+          const chosenArtifact = (payload.artifactToken as ArtifactID) || ArtifactID.VOID_OF_NOTHINGNESS;
           updates[`players.${payload.targetPlayerId}.artifact`] = chosenArtifact;
-          logs.push(`${actor.name} (Curator) placed an Artifact Token on ${game.players[payload.targetPlayerId].name} 🏺`);
+
+          const meta = ARTIFACT_METADATA[chosenArtifact];
+          const artName = meta?.name || 'Artifact Token';
+          const artIcon = meta?.icon || '🏺';
+          const targetName = targetPlayer.name;
+
+          if (meta?.isRoleChanging && meta?.associatedRole) {
+              const newRoleName = ROLE_METADATA[meta.associatedRole]?.name || meta.associatedRole;
+              updates[`players.${payload.targetPlayerId}.currentRole`] = meta.associatedRole;
+              updates[`players.${payload.targetPlayerId}.marks`] = []; // Overwrite cards and marks
+              logs.push(`${actor.name} (Curator) placed ${artName} on ${targetName} ${artIcon} — converted ${targetName} into a ${newRoleName}!`);
+          } else if (chosenArtifact === ArtifactID.MASK_OF_MUTING) {
+              logs.push(`${actor.name} (Curator) placed ${artName} on ${targetName} ${artIcon} — ${targetName} is silenced and cannot speak!`);
+          } else if (chosenArtifact === ArtifactID.DAGGER_OF_THE_TRAITOR) {
+              logs.push(`${actor.name} (Curator) placed ${artName} on ${targetName} ${artIcon} — turned ${targetName} into a Traitor to their initial team!`);
+          } else if (chosenArtifact === ArtifactID.VOID_OF_NOTHINGNESS) {
+              logs.push(`${actor.name} (Curator) placed ${artName} on ${targetName} ${artIcon} — has no effect.`);
+          } else {
+              logs.push(`${actor.name} (Curator) placed ${artName} on ${targetName} ${artIcon} — ${meta?.effectSummary || 'special artifact effect applied'}.`);
+          }
       }
   }
 

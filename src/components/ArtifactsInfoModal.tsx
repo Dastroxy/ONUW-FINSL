@@ -1,20 +1,31 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ARTIFACT_METADATA, ArtifactID, ALL_ARTIFACT_IDS } from '../constants/artifacts';
 
 interface Props {
-  isOpen: boolean;
+  isOpen?: boolean;
   onClose: () => void;
+  selectedArtifact?: string | null;
   highlightArtifactId?: string | null;
   allowedArtifactIds?: string[];
 }
 
 export const ArtifactsInfoModal: React.FC<Props> = ({
-  isOpen,
+  isOpen = true,
   onClose,
+  selectedArtifact,
   highlightArtifactId,
   allowedArtifactIds
 }) => {
-  if (!isOpen) return null;
+  if (isOpen === false) return null;
+
+  const activeHighlight = highlightArtifactId || selectedArtifact;
+  const highlightedRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (activeHighlight && highlightedRef.current) {
+      highlightedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [activeHighlight]);
 
   const displayIds = allowedArtifactIds && allowedArtifactIds.length > 0
     ? allowedArtifactIds
@@ -24,7 +35,10 @@ export const ArtifactsInfoModal: React.FC<Props> = ({
   const bonusArtifacts = displayIds.filter(id => ARTIFACT_METADATA[id as ArtifactID]?.expansion === 'Bonus');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+      onClick={onClose}
+    >
       <div 
         className="relative w-full max-w-2xl max-h-[85vh] bg-gradient-to-b from-[#130e26] via-[#0f0a20] to-[#090614] border border-[#dcf5eb]/20 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden text-moon"
         onClick={(e) => e.stopPropagation()}
@@ -57,7 +71,7 @@ export const ArtifactsInfoModal: React.FC<Props> = ({
         </div>
 
         {/* Content list */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar">
           {/* Daybreak */}
           {daybreakArtifacts.length > 0 && (
             <div>
@@ -69,13 +83,14 @@ export const ArtifactsInfoModal: React.FC<Props> = ({
                 {daybreakArtifacts.map(id => {
                   const meta = ARTIFACT_METADATA[id as ArtifactID];
                   if (!meta) return null;
-                  const isHighlighted = highlightArtifactId === id;
+                  const isHighlighted = activeHighlight === id;
                   return (
                     <div
                       key={id}
+                      ref={isHighlighted ? highlightedRef : undefined}
                       className={`p-3.5 rounded-xl border transition-all ${
                         isHighlighted
-                          ? 'bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                          ? 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400/70 shadow-[0_0_25px_rgba(245,158,11,0.4)] scale-[1.02]'
                           : 'bg-forest/60 border-white/10 hover:border-amber-500/30 hover:bg-forest/80'
                       }`}
                     >
@@ -109,13 +124,14 @@ export const ArtifactsInfoModal: React.FC<Props> = ({
                 {bonusArtifacts.map(id => {
                   const meta = ARTIFACT_METADATA[id as ArtifactID];
                   if (!meta) return null;
-                  const isHighlighted = highlightArtifactId === id;
+                  const isHighlighted = activeHighlight === id;
                   return (
                     <div
                       key={id}
+                      ref={isHighlighted ? highlightedRef : undefined}
                       className={`p-3.5 rounded-xl border transition-all ${
                         isHighlighted
-                          ? 'bg-cyan-500/20 border-cyan-400 ring-2 ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.3)]'
+                          ? 'bg-cyan-500/25 border-cyan-400 ring-2 ring-cyan-400/70 shadow-[0_0_25px_rgba(6,182,212,0.4)] scale-[1.02]'
                           : 'bg-forest/60 border-white/10 hover:border-cyan-500/30 hover:bg-forest/80'
                       }`}
                     >
