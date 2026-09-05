@@ -50,7 +50,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
   }));
 
   return (
-      <div className="min-h-screen relative flex flex-col items-center justify-between p-6 overflow-hidden bg-gradient-to-b from-[#090614] via-[#130e26] to-[#0d0818]">
+      <div className="min-h-[100dvh] pt-20 sm:pt-16 relative flex flex-col items-center justify-between p-4 sm:p-6 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[#090614] via-[#130e26] to-[#0d0818]">
           
           {/* ANIMATIONS */}
           <style>{`
@@ -111,7 +111,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
               <div className="relative z-20 mt-6 animate-bounce">
                   <div className="bg-[#130e26]/90 border-2 border-[#1a122e] px-6 py-4 rounded-xl shadow-[0_0_30px_rgba(100,80,180,0.3),0_0_10px_rgba(220,245,235,0.1)] text-center">
                       <h3 className="text-[#7eb8c9] text-xs font-display font-bold uppercase tracking-widest mb-1">Public Announcement</h3>
-                      <p className="text-[#dcf5eb] font-bold text-lg">{game.nostradamusAnnouncement}</p>
+                      <p className="text-[#dcf5eb] font-bold text-base sm:text-lg">{game.nostradamusAnnouncement}</p>
                   </div>
               </div>
           )}
@@ -124,7 +124,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                      Revealed Players
                      <span className="w-2 h-2 rounded-full bg-[#12b886] animate-pulse"></span>
                   </h3>
-                  <div className="flex flex-wrap justify-center gap-6">
+                  <div className="flex flex-wrap justify-center gap-4 sm:gap-4 sm:p-6">
                       {revealedPlayers.map(p => {
                           const meta = ROLE_METADATA[p.currentRole];
                           return (
@@ -171,7 +171,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                   onClick={() => !isReady && toggleDiscussionReady(game.id, me.id)}
                   disabled={isReady}
                   className={`
-                    w-full py-4 rounded-xl font-bold text-lg shadow-xl transition-all duration-300 transform border
+                    w-full py-4 rounded-xl font-bold text-base sm:text-lg shadow-xl transition-all duration-300 transform border
                     ${isReady 
                         ? 'bg-[#12b886]/20 border-[#12b886] text-[#20c997] cursor-default animate-pulse shadow-[0_0_20px_rgba(18,184,134,0.2)]' 
                         : 'bg-gradient-to-r from-[#130e26]/80 to-[#0c0818]/80 backdrop-blur-sm transform-gpu border-[#dcf5eb]/15 hover:border-[#dcf5eb]/40 text-[#dcf5eb] hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(220,245,235,0.1)]'}

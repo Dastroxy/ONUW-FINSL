@@ -36,7 +36,7 @@ const VotingPage: React.FC<Props> = ({ game, me }) => {
   }));
 
   return (
-      <div className="min-h-screen relative flex flex-col items-center justify-center p-6 bg-gradient-to-br from-[#090614] via-[#130e26] to-[#0d0818] overflow-hidden">
+      <div className="min-h-[100dvh] pt-20 sm:pt-16 relative flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-[#090614] via-[#130e26] to-[#0d0818] overflow-y-auto overflow-x-hidden">
           <style>{`
             @keyframes float-particle {
                 0% { transform: translateY(110vh) scale(0) rotate(0deg); opacity: 0; }
@@ -128,7 +128,7 @@ const VotingPage: React.FC<Props> = ({ game, me }) => {
                           >
                               {/* Avatar Circle */}
                               <div className={`
-                                w-12 h-12 rounded-full flex items-center justify-center font-bold shadow-lg transition-colors duration-300 overflow-hidden
+                                w-8 h-8 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold shadow-lg transition-colors duration-300 overflow-hidden
                                 ${isSelected ? 'bg-primary text-white shadow-[0_0_20px_rgba(18,184,134,0.4)] ring-2 ring-[#dcf5eb]/40' : 'bg-forest text-moon/50 group-hover:bg-bark group-hover:text-moon'}
                               `}>
                                  {p.icon && p.icon.includes('/') ? (
@@ -153,7 +153,7 @@ const VotingPage: React.FC<Props> = ({ game, me }) => {
 
               <div className="mt-10 w-full max-w-sm px-4">
                   {me.votedFor ? (
-                      <div className="glass-card p-6 rounded-2xl text-center border-[#dcf5eb]/20 bg-[#dcf5eb]/5">
+                      <div className="glass-card p-4 sm:p-6 rounded-2xl text-center border-[#dcf5eb]/20 bg-[#dcf5eb]/5">
                           <div className="text-[#dcf5eb] font-black text-2xl mb-1 animate-pulse" style={{ textShadow: '0 0 15px rgba(220,245,235,0.4)' }}>VOTE LOCKED</div>
                           <div className="text-[10px] text-moon/40 uppercase tracking-widest font-bold">Waiting for other players...</div>
                       </div>
@@ -162,7 +162,7 @@ const VotingPage: React.FC<Props> = ({ game, me }) => {
                         disabled={!voteTarget}
                         onClick={handleVote}
                         className={`
-                          w-full py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 relative overflow-hidden
+                          w-full py-2 sm:py-4 rounded-xl font-bold text-xl shadow-lg transition-all duration-300 relative overflow-hidden
                           ${voteTarget 
                               ? 'bg-gradient-to-r from-primary to-accent text-white shadow-[0_8px_30px_rgba(18,184,134,0.3),0_0_15px_rgba(220,245,235,0.1)] hover:scale-[1.02] active:scale-95 border border-[#dcf5eb]/20' 
                               : 'bg-forest/50 text-moon/30 cursor-not-allowed border border-[#dcf5eb]/5'}

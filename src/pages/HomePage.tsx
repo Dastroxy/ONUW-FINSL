@@ -72,13 +72,13 @@ const HomePage: React.FC = () => {
   }));
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-6 text-center home-bg font-sans">
+    <div className="min-h-[100dvh] relative overflow-y-auto overflow-x-hidden flex flex-col items-center justify-center p-6 text-center home-bg font-sans">
       {showIconSelect && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowIconSelect(false)}></div>
-          <div className="relative bg-surface border border-moon/20 rounded-2xl shadow-[0_0_50px_rgba(18,184,134,0.15)] p-6 w-full max-w-md animate-fade-in-up">
+          <div className="relative bg-surface border border-moon/20 rounded-2xl shadow-[0_0_50px_rgba(18,184,134,0.15)] p-6 w-full max-w-xs sm:max-w-md animate-fade-in-up">
             <h3 className="text-moon font-display text-xl mb-4 text-center">Select Your Avatar</h3>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-2 sm:gap-3">
               {PLAYER_AVATARS.map(avatar => (
                 <button 
                   key={avatar}
@@ -111,7 +111,7 @@ const HomePage: React.FC = () => {
         .home-title {
           font-family: 'Cinzel', serif;
           font-weight: 700;
-          font-size: clamp(2.5rem, 8vw, 5rem);
+          font-size: clamp(1.5rem, 8vw, 4rem);
           letter-spacing: 0.05em;
           text-shadow: 
             0 2px 10px rgba(0,0,0,0.9),
@@ -286,8 +286,10 @@ const HomePage: React.FC = () => {
           color: white;
           text-align: center;
           font-weight: 800;
-          font-size: 1.25rem;
-          padding: 1rem;
+          font-size: 1rem;
+          @media(min-width: 640px) { font-size: 1.25rem; }
+          padding: 0.8rem;
+          @media(min-width: 640px) { padding: 1rem; }
           border-radius: 12px;
           width: 100%;
           transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.4s ease;
@@ -419,24 +421,24 @@ const HomePage: React.FC = () => {
         </svg>
       </div>
 
-      <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-8">
+      <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-6 sm:gap-8">
         
         <div className="animate-fade-in-up">
             <h1 className="home-title text-transparent bg-clip-text bg-gradient-to-b from-moon to-primary-light mb-1">
                 ONE NIGHT
             </h1>
-            <h2 className="home-subtitle text-lg md:text-xl text-primary font-bold uppercase mt-1">
+            <h2 className="home-subtitle text-xs sm:text-sm md:text-lg text-primary font-bold uppercase mt-1">
                 Ultimate Werewolf
             </h2>
         </div>
 
         <div className="ornate-divider" />
 
-        <div className="w-full max-w-sm animate-fade-in-up flex gap-3" style={{ animationDelay: '0.1s' }}>
+        <div className="w-full max-w-xs sm:max-w-sm animate-fade-in-up flex gap-2 sm:gap-3" style={{ animationDelay: '0.1s' }}>
             <div className="relative">
               <button 
                 onClick={() => setShowIconSelect(true)}
-                className="identity-input !p-0 !w-[64px] !h-[64px] flex-shrink-0 flex items-center justify-center hover:bg-surface/60 transition-colors overflow-hidden rounded-xl border-2 border-transparent hover:border-primary/50"
+                className="identity-input !p-0 !w-[54px] !h-[54px] sm:!w-[64px] sm:!h-[64px] flex-shrink-0 flex items-center justify-center hover:bg-surface/60 transition-colors overflow-hidden rounded-xl border-2 border-transparent hover:border-primary/50"
                 style={{ marginBottom: 0 }}
               >
                 {icon.includes('/') ? <img src={icon} alt="avatar" className="w-full h-full object-cover rounded-xl" /> : icon}

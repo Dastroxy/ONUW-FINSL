@@ -15,7 +15,6 @@ interface Props {
 }
 
 const LobbyPage: React.FC<Props> = ({ game, me }) => {
-  const [copied, setCopied] = useState(false);
   const [cardFlipped, setCardFlipped] = useState(false);
   
   const selectedRoles = game.selectedRoles || [];
@@ -33,11 +32,6 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const MIN_PLAYERS = 3;
   const MAX_PLAYERS = 10;
@@ -46,28 +40,13 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
   if (game.phase === GamePhase.LOBBY) {
     const canStartSeating = players.length >= MIN_PLAYERS && players.length <= MAX_PLAYERS;
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 relative">
+      <div className="flex flex-col items-center justify-center min-h-[100dvh] pt-20 sm:pt-16 p-4 sm:p-6 relative">
          <div className="absolute inset-0 bg-gradient-to-b from-[#0d0818] via-[#0d1228] to-[#090614] pointer-events-none"></div>
          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(100,60,180,0.08)_0%,_transparent_60%)] pointer-events-none"></div>
-         
-         <div className="relative z-10 w-full max-w-sm glass-panel rounded-3xl p-8 mb-8 text-center shadow-[0_10px_50px_rgba(0,0,0,0.5),_0_0_40px_rgba(220,245,235,0.08),_0_0_80px_rgba(18,184,134,0.06)] animate-fade-in-up transition-all hover:shadow-[0_10px_50px_rgba(0,0,0,0.6),_0_0_50px_rgba(220,245,235,0.1),_0_0_100px_rgba(18,184,134,0.1)]" style={{ border: '1px solid rgba(220, 245, 235, 0.2)' }}>
-            <h3 className="text-moon/70 text-xs uppercase tracking-[0.2em] font-bold mb-3 font-display">Room Code</h3>
-            <div className="flex items-center justify-center gap-3 mb-6">
-               <span className="text-6xl font-mono font-bold text-moon tracking-wider" style={{ textShadow: '0 0 25px rgba(220, 245, 235, 0.5), 0 0 50px rgba(18, 184, 134, 0.3)' }}>
-                 {game.id}
-               </span>
-            </div>
-            <button 
-               onClick={copyToClipboard}
-               className={`text-sm px-5 py-2.5 rounded-full border transition-all duration-300 font-semibold ${copied ? 'bg-green-500/20 border-green-500 text-green-300 shadow-[0_0_20px_rgba(74,222,128,0.2)]' : 'bg-white/5 border-moon/30 text-moon/80 hover:bg-primary/15 hover:border-primary/50 hover:text-white hover:shadow-[0_0_20px_rgba(18,184,134,0.2)] hover:-translate-y-0.5'}`}
-            >
-               {copied ? '✓ Link Copied' : 'Copy Invite Link'}
-            </button>
-         </div>
 
-         <div className="relative z-10 w-full max-w-sm mb-8 flex-1 overflow-y-auto">
+         <div className="relative z-10 w-full max-w-xs sm:max-w-sm sm:max-w-sm mb-8 flex-1 overflow-y-auto">
              <div className="flex justify-between items-end mb-4 px-2">
-                 <h2 className="text-xl font-bold text-moon font-display" style={{ textShadow: '0 0 10px rgba(220, 245, 235, 0.2)' }}>Lobby</h2>
+                 <h2 className="text-base sm:text-lg sm:text-xl font-bold text-moon font-display" style={{ textShadow: '0 0 10px rgba(220, 245, 235, 0.2)' }}>Lobby</h2>
                  <span className={`text-sm px-2 py-1 rounded font-mono ${players.length >= MIN_PLAYERS ? 'text-green-400 bg-green-500/10 shadow-[0_0_10px_rgba(74,222,128,0.1)]' : 'text-gray-500 bg-bark'}`}>
                     {players.length} / {MAX_PLAYERS} Players
                  </span>
@@ -75,33 +54,33 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
              
              <ul className="space-y-3">
                 {players.map((p) => (
-                  <li key={p.id} className="bg-forest/60 border border-moon/15 p-3.5 rounded-xl flex items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] backdrop-blur-md transform-gpu animate-fade-in hover:border-primary/40 hover:bg-forest/80 hover:-translate-y-0.5 transition-all duration-300">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden font-black ${p.isHost ? 'bg-gradient-to-br from-primary to-primary-light text-white shadow-[0_0_15px_rgba(18,184,134,0.6)]' : 'bg-surface border-2 border-moon/15 text-moon/80'}`}>
+                  <li key={p.id} className="bg-forest/60 border border-moon/15 p-3.5 rounded-xl flex items-center gap-2 sm:gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] backdrop-blur-md transform-gpu animate-fade-in hover:border-primary/40 hover:bg-forest/80 hover:-translate-y-0.5 transition-all duration-300">
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center overflow-hidden font-black ${p.isHost ? 'bg-gradient-to-br from-primary to-primary-light text-white shadow-[0_0_15px_rgba(18,184,134,0.6)]' : 'bg-surface border-2 border-moon/15 text-moon/80'}`}>
                          {p.icon && p.icon.includes('/') ? (
                            <img src={p.icon} alt={p.name} className="w-full h-full object-cover" />
                          ) : (
-                           <span className={p.icon ? 'text-2xl' : 'text-sm'}>{p.icon || p.name.charAt(0).toUpperCase()}</span>
+                           <span className={p.icon ? 'text-base sm:text-lg sm:text-xl sm:text-2xl' : 'text-sm'}>{p.icon || p.name.charAt(0).toUpperCase()}</span>
                          )}
                       </div>
-                      <span className="text-white font-semibold tracking-wide text-lg">{p.name}</span>
+                      <span className="text-white font-semibold tracking-wide text-base sm:text-lg">{p.name}</span>
                       {p.isHost && <span className="ml-auto text-[10px] tracking-widest font-black bg-primary/20 text-primary-light border border-primary/40 px-2 py-1 rounded shadow-[0_0_10px_rgba(18,184,134,0.3)]">HOST</span>}
                   </li>
                 ))}
                 {Array.from({ length: Math.max(0, MIN_PLAYERS - players.length) }).map((_, i) => (
-                   <li key={`empty-${i}`} className="border-2 border-dashed border-forest/60 p-3.5 rounded-xl flex items-center gap-4 opacity-50 bg-black/10">
-                       <div className="w-10 h-10 rounded-full bg-surface/50 border border-forest/50"></div>
+                   <li key={`empty-${i}`} className="border-2 border-dashed border-forest/60 p-3.5 rounded-xl flex items-center gap-2 sm:gap-4 opacity-50 bg-black/10">
+                       <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface/50 border border-forest/50"></div>
                        <span className="text-moon/30 text-sm italic tracking-wide">Waiting for players...</span>
                    </li>
                 ))}
              </ul>
          </div>
 
-         <div className="relative z-10 w-full max-w-sm mt-4">
+         <div className="relative z-10 w-full max-w-xs sm:max-w-sm sm:max-w-sm mt-4">
              {isHost ? (
                <button 
                  onClick={() => advanceToSeating(game.id)}
                  disabled={!canStartSeating}
-                 className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all duration-300
+                 className={`w-full py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg transition-all duration-300
                     ${canStartSeating 
                       ? 'bg-gradient-to-r from-primary to-primary-light hover:from-primary/90 hover:scale-[1.02] text-white shadow-[0_0_30px_rgba(18,184,134,0.3)] border border-primary/30' 
                       : 'bg-bark text-moon/30 cursor-not-allowed border border-forest'}`}
@@ -126,12 +105,12 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
      const totalSeats = Math.max(3, Math.min(MAX_PLAYERS, players.length));
      
      return (
-        <div className="p-4 flex flex-col items-center min-h-screen relative">
+        <div className="p-4 flex flex-col items-center min-h-[100dvh] pt-20 sm:pt-16 relative">
            <div className="absolute inset-0 bg-gradient-to-b from-[#0d0818] via-[#10162c] to-[#090614] pointer-events-none"></div>
            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(120,60,200,0.06)_0%,_transparent_50%)] pointer-events-none"></div>
            
            <header className="mb-6 text-center pt-4 relative z-10">
-               <h2 className="text-3xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-moon mb-2" style={{ filter: 'drop-shadow(0 0 12px rgba(18, 184, 134, 0.3))' }}>Select Your Seat</h2>
+               <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-moon mb-2" style={{ filter: 'drop-shadow(0 0 12px rgba(18, 184, 134, 0.3))' }}>Select Your Seat</h2>
                <p className="text-moon/40 text-sm">Tap an open seat to join the game</p>
            </header>
            
@@ -144,14 +123,14 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
              />
            </div>
            
-           <div className="mt-4 w-full max-w-md glass-panel p-4 rounded-xl mb-24 relative z-10" style={{ border: '1px solid rgba(220, 245, 235, 0.1)' }}>
+           <div className="mt-4 w-full max-w-xs sm:max-w-md sm:max-w-md glass-panel p-4 rounded-xl mb-24 relative z-10" style={{ border: '1px solid rgba(220, 245, 235, 0.1)' }}>
              <div className="flex justify-between items-center mb-3 px-1">
                 <span className="text-moon/50 text-sm font-bold uppercase tracking-wider">Players</span>
                 <span className={`font-mono text-sm px-2 py-1 rounded ${canProceedToRoles ? 'bg-green-500/20 text-green-400 shadow-[0_0_8px_rgba(74,222,128,0.15)]' : 'bg-bark text-moon/30'}`}>
                   {seatedPlayersCount} / {MAX_PLAYERS} Seated
                 </span>
              </div>
-             <ul className="grid grid-cols-2 gap-2 text-sm max-h-40 overflow-y-auto">
+             <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm max-h-40 overflow-y-auto">
                {players.map(p => (
                  <li key={p.id} className={`px-3 py-2 rounded border flex items-center justify-between transition-colors ${p.seatId !== null ? 'bg-primary/10 border-primary/50 text-moon shadow-[0_0_12px_rgba(18,184,134,0.2)]' : 'bg-surface/60 border-forest/50 text-moon/30 opacity-60'}`} style={p.seatId !== null ? { boxShadow: '0 0 12px rgba(220, 245, 235, 0.06), inset 0 1px 0 rgba(220, 245, 235, 0.05)' } : {}}>
                     <span className="truncate max-w-[100px]">{p.name}</span>
@@ -168,7 +147,7 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
               <div className="fixed bottom-6 left-0 right-0 px-6 flex justify-center z-50">
                   <button 
                     disabled={!canProceedToRoles}
-                    className={`w-full max-w-md py-4 rounded-xl font-bold text-lg shadow-2xl transition-all duration-300 relative overflow-hidden group
+                    className={`w-full max-w-xs sm:max-w-md sm:max-w-md py-4 rounded-xl font-bold text-base sm:text-lg shadow-2xl transition-all duration-300 relative overflow-hidden group
                         ${canProceedToRoles 
                             ? 'bg-gradient-to-r from-primary to-primary-light hover:from-primary/90 hover:to-primary-light/90 text-white shadow-[0_0_35px_rgba(18,184,134,0.4)] transform hover:scale-[1.02] border border-moon/15' 
                             : 'bg-bark text-moon/30 cursor-not-allowed border border-forest'}`}
@@ -212,7 +191,7 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
         <div className="flex flex-col h-screen" style={{ background: 'linear-gradient(180deg, #090614 0%, #0d1228 50%, #0d0818 100%)' }}>
           <header className="flex justify-between items-center p-4 border-b border-moon/8 sticky top-0 z-30 shadow-[0_4px_30px_rgba(0,0,0,0.5)]" style={{ background: 'rgba(10, 14, 26, 0.85)', backdropFilter: 'blur(20px)' }}>
              <div>
-                <h2 className="text-lg font-display font-bold text-moon" style={{ textShadow: '0 0 10px rgba(220, 245, 235, 0.2)' }}>Select Roles</h2>
+                <h2 className="text-base sm:text-lg font-display font-bold text-moon" style={{ textShadow: '0 0 10px rgba(220, 245, 235, 0.2)' }}>Select Roles</h2>
                 <p className="text-xs text-moon/40">Select {requiredRolesCount} cards (Players + 3)</p>
              </div>
              <div className={`
@@ -235,12 +214,12 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
 
                  return (
                      <div key={exp} className="mb-10 animate-fade-in">
-                         <h3 className="text-xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-moon mb-6 px-2 uppercase tracking-widest flex items-center gap-3">
+                         <h3 className="text-base sm:text-lg sm:text-xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-moon mb-6 px-2 uppercase tracking-widest flex items-center gap-2 sm:gap-3">
                              <span className="w-10 h-[2px] bg-gradient-to-r from-primary to-moon/40 rounded-full"></span>
                              {exp}
                              <span className="flex-1 h-[1px] bg-gradient-to-r from-moon/15 to-transparent rounded-full"></span>
                          </h3>
-                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4">
                              {expRoles.map(r => {
                                  const meta = ROLE_METADATA[r];
                                  const isSelected = selectedRoles.includes(r);
@@ -249,7 +228,7 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
                                          key={r}
                                          onClick={() => toggleRole(r)}
                                          className={`
-                                             relative h-32 rounded-xl border transition-all duration-300 cursor-pointer overflow-hidden flex flex-col group
+                                             relative h-24 sm:h-32 rounded-xl border transition-all duration-300 cursor-pointer overflow-hidden flex flex-col group
                                              backdrop-blur-sm transform-gpu
                                              ${isSelected 
                                                  ? 'border-moon/40 bg-primary/20 shadow-[0_0_25px_rgba(18,184,134,0.3),_0_0_50px_rgba(220,245,235,0.08)] scale-105 z-10 ring-2 ring-primary/40' 
@@ -259,7 +238,7 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
                                          <div className={`h-1.5 w-full ${meta.team === 'GOOD' ? 'bg-good shadow-[0_0_12px_rgba(126,184,201,0.5)]' : meta.team === 'EVIL' ? 'bg-evil shadow-[0_0_12px_rgba(185,28,28,0.5)]' : 'bg-independent shadow-[0_0_12px_rgba(212,168,71,0.5)]'}`}></div>
                                          <div className="flex-1 flex flex-col items-center justify-center p-2 text-center relative z-10">
                                              <div className={`mb-2 transition-all duration-300 ${isSelected ? 'scale-110 drop-shadow-[0_0_12px_rgba(220,245,235,0.5)]' : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'} grayscale-[0.3] group-hover:grayscale-0`}>
-                                                 <RoleIcon role={r} className="w-12 h-12" />
+                                                 <RoleIcon role={r} className="w-8 h-8 sm:w-12 sm:h-12" />
                                              </div>
                                              <span className={`text-xs font-bold leading-tight uppercase tracking-wide transition-colors ${isSelected ? 'text-moon' : 'text-moon/40 group-hover:text-moon/90'}`}>
                                                  {meta.name}
@@ -284,14 +263,14 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
           <RolesInfoButton roles={selectedRoles} />
 
           {isHost ? (
-             <div className="fixed bottom-0 left-0 right-0 p-6 z-40" style={{ background: 'linear-gradient(to top, #090614 0%, rgba(8, 11, 20, 0.95) 60%, transparent 100%)' }}>
+             <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 z-40" style={{ background: 'linear-gradient(to top, #090614 0%, rgba(8, 11, 20, 0.95) 60%, transparent 100%)' }}>
                <button 
                  disabled={selectedRoles.length !== requiredRolesCount}
                  onClick={async () => {
                     await startGameSetup(game.id);
                  }}
                  className={`
-                    w-full max-w-md mx-auto block py-4 rounded-xl font-bold text-xl shadow-lg transition-all transform
+                    w-full max-w-xs sm:max-w-md sm:max-w-md mx-auto block py-4 rounded-xl font-bold text-base sm:text-lg sm:text-xl shadow-lg transition-all transform
                     ${selectedRoles.length === requiredRolesCount
                         ? 'bg-gradient-to-tr from-accent to-evil border-2 border-accent/60 text-white shadow-[0_8px_30px_rgba(139,17,59,0.4),_0_0_50px_rgba(220,245,235,0.06)] hover:shadow-[0_8px_40px_rgba(139,17,59,0.6)] hover:brightness-110 hover:scale-[1.02] active:scale-95'
                         : 'bg-bark text-moon/30 cursor-not-allowed border border-forest'}
@@ -301,7 +280,7 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
                </button>
              </div>
           ) : (
-             <div className="fixed bottom-0 left-0 right-0 p-6 z-40 text-center" style={{ background: 'linear-gradient(to top, #090614 0%, rgba(8, 11, 20, 0.95) 60%, transparent 100%)' }}>
+             <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 z-40 text-center" style={{ background: 'linear-gradient(to top, #090614 0%, rgba(8, 11, 20, 0.95) 60%, transparent 100%)' }}>
                  <div className="text-primary font-bold animate-pulse mb-2" style={{ textShadow: '0 0 15px rgba(18, 184, 134, 0.3)' }}>HOST IS SELECTING ROLES</div>
                  <p className="text-moon/30 text-xs">Sit tight, the game will start soon.</p>
              </div>
@@ -313,12 +292,12 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
   
   // DEAL PHASE (VIEW ROLE)
   return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 relative overflow-hidden">
+      <div className="flex flex-col items-center justify-center min-h-[100dvh] pt-20 sm:pt-16 p-4 sm:p-6 relative overflow-y-auto overflow-x-hidden">
          <div className="absolute inset-0 bg-gradient-to-b from-[#0d0818] via-[#10162c] to-[#090614] pointer-events-none"></div>
          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(100,60,200,0.1)_0%,_rgba(18,184,134,0.05)_30%,_transparent_60%)] pointer-events-none"></div>
          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(220,245,235,0.04)_0%,_transparent_50%)] pointer-events-none"></div>
          
-         <h2 className="text-3xl font-display font-bold mb-8 text-moon relative z-10 tracking-wide" style={{ textShadow: '0 0 20px rgba(220, 245, 235, 0.3), 0 2px 10px rgba(0, 0, 0, 0.5)' }}>Your Role</h2>
+         <h2 className="text-2xl sm:text-3xl font-display font-bold mb-8 text-moon relative z-10 tracking-wide" style={{ textShadow: '0 0 20px rgba(220, 245, 235, 0.3), 0 2px 10px rgba(0, 0, 0, 0.5)' }}>Your Role</h2>
          
          <div className="z-20">
             <RoleCard role={me.originalRole} flipped={cardFlipped} onClick={() => setCardFlipped(!cardFlipped)} size="lg" className="card-glow shadow-[0_0_40px_rgba(18,184,134,0.2),_0_0_80px_rgba(100,60,200,0.08)]" />
@@ -332,7 +311,7 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
              <div className="mb-4 flex justify-center">
                  <RoleIcon role={me.originalRole} className="w-16 h-16 drop-shadow-[0_0_20px_rgba(18,184,134,0.4)]" />
              </div>
-             <h3 className="text-2xl font-display font-bold text-primary mb-2" style={{ textShadow: '0 0 15px rgba(18, 184, 134, 0.4)' }}>{ROLE_METADATA[me.originalRole].name}</h3>
+             <h3 className="text-base sm:text-lg sm:text-xl sm:text-2xl font-display font-bold text-primary mb-2" style={{ textShadow: '0 0 15px rgba(18, 184, 134, 0.4)' }}>{ROLE_METADATA[me.originalRole].name}</h3>
              <p className="text-moon/70 text-sm leading-relaxed glass-panel p-4 rounded-xl shadow-xl" style={{ border: '1px solid rgba(220, 245, 235, 0.1)' }}>
                 {ROLE_METADATA[me.originalRole].description}
              </p>
@@ -344,15 +323,15 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
             const dealReadyCount = dealReady.length;
             const totalPlayers = Object.keys(game.players).length;
             return (
-              <div className="mt-10 flex flex-col items-center gap-3 relative z-30">
+              <div className="mt-10 flex flex-col items-center gap-2 sm:gap-3 relative z-30">
                 {isDealReady ? (
-                  <div className="bg-primary/15 border border-moon/20 text-primary-light px-8 py-3 rounded-full font-bold text-lg tracking-wider animate-pulse shadow-[0_0_20px_rgba(220,245,235,0.08)]">
+                  <div className="bg-primary/15 border border-moon/20 text-primary-light px-5 py-2 sm:px-8 sm:py-3 rounded-full font-bold text-sm sm:text-base sm:text-lg tracking-wider animate-pulse shadow-[0_0_20px_rgba(220,245,235,0.08)]">
                     READY
                   </div>
                 ) : (
                   <button
                     onClick={() => toggleDealReady(game.id, me.id)}
-                    className="bg-gradient-to-r from-accent to-evil hover:from-accent/90 hover:to-evil/90 text-white px-10 py-4 rounded-full font-display font-bold text-lg shadow-[0_0_35px_rgba(139,17,59,0.5),_0_0_60px_rgba(220,245,235,0.06)] transition-all transform hover:scale-105 active:scale-95 tracking-wider border border-moon/10"
+                    className="bg-gradient-to-r from-accent to-evil hover:from-accent/90 hover:to-evil/90 text-white px-6 py-3 sm:px-10 sm:py-4 rounded-full font-display font-bold text-sm sm:text-base sm:text-lg shadow-[0_0_35px_rgba(139,17,59,0.5),_0_0_60px_rgba(220,245,235,0.06)] transition-all transform hover:scale-105 active:scale-95 tracking-wider border border-moon/10"
                   >
                     READY
                   </button>

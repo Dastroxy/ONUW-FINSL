@@ -138,7 +138,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
     }
   }, [activeRoleID, game.players, me.id, psychicSeenRole]);
 
-  if (!currentRoleID) return <div className="min-h-screen bg-black flex items-center justify-center text-primary">Loading Night...</div>;
+  if (!currentRoleID) return <div className="min-h-[100dvh] pt-20 sm:pt-16 bg-black flex items-center justify-center text-primary">Loading Night...</div>;
 
   // ------------------------------------------------------------------
   // WAITING SCREEN
@@ -161,7 +161,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
      const isThingTarget = currentRoleID === RoleID.THING && game.thingTarget === me.id;
 
      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#06030c] text-center p-6 overflow-hidden relative">
+        <div className="min-h-[100dvh] pt-20 sm:pt-16 flex flex-col items-center justify-center bg-[#06030c] text-center p-4 sm:p-6 overflow-y-auto overflow-x-hidden relative">
             <style>{`
                 
 
@@ -244,11 +244,11 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                 <div className="w-28 h-28 mb-6 rounded-full bg-[#0d0818] border-2 border-[#dcf5eb]/20 flex items-center justify-center shadow-[0_0_40px_rgba(220,245,235,0.1),_0_0_80px_rgba(100,80,160,0.08)]">
                     <span className="text-5xl opacity-80">🌙</span>
                 </div>
-                <h2 className="text-2xl font-display font-bold text-moon mb-2 tracking-wide drop-shadow-[0_0_15px_rgba(220,245,235,0.3)]">Night Phase</h2>
+                <h2 className="text-base sm:text-lg sm:text-xl sm:text-2xl font-display font-bold text-moon mb-2 tracking-wide drop-shadow-[0_0_15px_rgba(220,245,235,0.3)]">Night Phase</h2>
                 <p className="text-[#8090b0] mb-8">
                     <span className="text-primary font-bold">Someone</span> is waking up...
                 </p>
-                <div className="w-48 h-1.5 bg-[#151a30] rounded-full overflow-hidden border border-[#2a2545]/50">
+                <div className="w-36 sm:w-48 h-1.5 bg-[#151a30] rounded-full overflow-hidden border border-[#2a2545]/50">
                     <div className="bg-gradient-to-r from-primary to-primary-light h-full transition-all duration-1000 shadow-[0_0_10px_rgba(18,184,134,0.5)]" style={{ width: `${((game.currentNightRoleIndex) / game.nightQueue.length) * 100}%` }}></div>
                 </div>
             </div>
@@ -891,7 +891,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                 `}>
                     {/* FRONT (Hidden State) */}
                     <div className="absolute inset-0 backface-hidden bg-[#0c0e1a] border-2 border-[#2a2545] rounded-xl flex items-center justify-center shadow-lg" style={{ boxShadow: 'inset 0 1px 0 rgba(220,245,235,0.04), 0 0 8px rgba(0,0,0,0.5)' }}>
-                        <span className="text-4xl font-display text-[#3a3555] font-bold opacity-60">?</span>
+                        <span className="text-3xl sm:text-4xl font-display text-[#3a3555] font-bold opacity-60">?</span>
                         {isSelected && <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-xs text-white">✓</div>}
                     </div>
 
@@ -933,7 +933,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   if (activeRoleID === RoleID.ROBBER && robberState !== 'IDLE') {
       const targetName = selectedPlayers.length > 0 ? game.players[selectedPlayers[0]].name : "Target";
       return (
-          <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden">
+          <div className="min-h-[100dvh] pt-20 sm:pt-16 bg-background flex flex-col items-center justify-center relative overflow-y-auto overflow-x-hidden">
                <style>{`
                   @keyframes cardSwapRight { 0% { transform: translateX(0); z-index: 20; } 50% { transform: translateX(50%) scale(1.1); z-index: 20; } 100% { transform: translateX(100%); z-index: 20; } }
                   @keyframes cardSwapLeft { 0% { transform: translateX(0); z-index: 10; } 50% { transform: translateX(-50%) scale(0.9); z-index: 10; } 100% { transform: translateX(-100%); z-index: 10; } }
@@ -942,14 +942,14 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   .glow-text { text-shadow: 0 0 20px rgba(18,184,134,0.6); }
                `}</style>
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[200px] bg-primary/10 blur-[80px] pointer-events-none"></div>
-               <div className="flex gap-8 relative mb-12">
+               <div className="flex gap-2 sm:gap-4 sm:gap-2 sm:gap-4 sm:p-6 sm:p-8 relative mb-12">
                    <div className="flex flex-col items-center">
                        <div className={`relative w-28 h-40 ${robberState === 'SWAPPING' ? 'animate-swap-right' : 'translate-x-[100%]'}`}>
                            {robberState === 'REVEALED' ? (
                                <RoleCard role={robberNewRole!} revealed={true} size="md" className="border-4 border-primary shadow-[0_0_30px_rgba(18,184,134,0.6)] animate-flip-in" />
                            ) : (
                                <div className="w-full h-full bg-gray-800 border-2 border-gray-600 rounded-xl flex items-center justify-center">
-                                   <span className="text-4xl text-gray-500 font-display">?</span>
+                                   <span className="text-3xl sm:text-4xl text-gray-500 font-display">?</span>
                                </div>
                            )}
                        </div>
@@ -958,7 +958,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                    <div className="flex flex-col items-center">
                        <div className={`relative w-28 h-40 ${robberState === 'SWAPPING' ? 'animate-swap-left' : 'translate-x-[-100%]'}`}>
                             <div className="w-full h-full bg-gray-800 border-2 border-gray-600 rounded-xl flex items-center justify-center">
-                                <span className="text-4xl text-gray-500 font-display">?</span>
+                                <span className="text-3xl sm:text-4xl text-gray-500 font-display">?</span>
                             </div>
                        </div>
                        {robberState === 'SWAPPING' && <span className="mt-4 text-gray-400 text-sm font-bold">{targetName}</span>}
@@ -966,11 +966,11 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                </div>
                {robberState === 'REVEALED' && (
                    <div className="text-center animate-fade-in-up z-20">
-                       <h2 className="text-3xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-light mb-2 glow-text">
+                       <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-light mb-2 glow-text">
                            Your new role is {ROLE_METADATA[robberNewRole!].name}
                            <RoleIcon role={robberNewRole!} className="inline-block w-8 h-8 ml-2 -mt-1" />
                        </h2>
-                       <button onClick={handleFinish} className="mt-8 px-10 py-4 rounded-full bg-gradient-to-r from-primary to-accent text-white font-bold text-lg shadow-lg hover:scale-105 transition-transform">CONTINUE →</button>
+                       <button onClick={handleFinish} className="mt-8 px-10 py-2 sm:py-4 rounded-full bg-gradient-to-r from-primary to-accent text-white font-bold text-base sm:text-lg shadow-lg hover:scale-105 transition-transform">CONTINUE →</button>
                    </div>
                )}
           </div>
@@ -1001,7 +1001,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           headerDesc = `${p1.name}: ${ROLE_METADATA[r1].name} | ${p2.name}: ${ROLE_METADATA[r2].name}`;
           const lastTeam = ROLE_METADATA[r2].team;
           const teamText = lastTeam === Team.GOOD ? 'GOOD' : lastTeam === Team.EVIL ? 'EVIL' : 'INDEPENDENT';
-          nostradamusResult = (<div className="mt-4 text-center animate-fade-in-up"><div className="nostradamus-result uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-moon font-black text-xl drop-shadow-sm">Your last viewed card team is {teamText}</div></div>);
+          nostradamusResult = (<div className="mt-4 text-center animate-fade-in-up"><div className="nostradamus-result uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-moon font-black text-base sm:text-lg sm:text-xl drop-shadow-sm">Your last viewed card team is {teamText}</div></div>);
       }
   }
 
@@ -1064,7 +1064,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           <div className="flex flex-col items-center justify-center animate-fade-in mt-8 w-full">
             <style>{`
             `}</style>
-            <h3 className="text-xl md:text-2xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-moon to-primary-light mb-8 tracking-widest text-center leading-relaxed">
+            <h3 className="text-base sm:text-lg sm:text-xl md:text-base sm:text-lg sm:text-xl sm:text-2xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-moon to-primary-light mb-8 tracking-widest text-center leading-relaxed">
                 One of your neighbors is a...
             </h3>
             
@@ -1079,8 +1079,8 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                         />
                     </div>
                 ) : (
-                    <div className="w-48 h-72 bg-gray-900 border-4 border-primary/30 rounded-xl flex items-center justify-center shadow-2xl">
-                        <span className="text-6xl animate-pulse grayscale opacity-50">🧠</span>
+                    <div className="w-36 sm:w-48 h-72 bg-gray-900 border-4 border-primary/30 rounded-xl flex items-center justify-center shadow-2xl">
+                        <span className="text-4xl sm:text-6xl animate-pulse grayscale opacity-50">🧠</span>
                     </div>
                 )}
             </div>
@@ -1102,11 +1102,11 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
       beholderUI = (
           <div className="w-full max-w-md mt-6 space-y-4 animate-fade-in">
              <div className="bg-gray-800/60 p-4 rounded-xl border border-good/30 flex items-center justify-between shadow-lg">
-                 <div className="flex items-center gap-3"><RoleIcon role={RoleID.SEER} className="w-10 h-10" /><div className="flex flex-col"><span className="font-bold text-gray-300 text-sm uppercase tracking-wider">Seer</span>{seer ? <span className="text-white font-bold text-lg">{seer.name}</span> : <span className="text-gray-500 italic">Not in game</span>}</div></div>
+                 <div className="flex items-center gap-2 sm:gap-3"><RoleIcon role={RoleID.SEER} className="w-8 h-8 sm:w-10 sm:h-10" /><div className="flex flex-col"><span className="font-bold text-gray-300 text-sm uppercase tracking-wider">Seer</span>{seer ? <span className="text-white font-bold text-base sm:text-lg">{seer.name}</span> : <span className="text-gray-500 italic">Not in game</span>}</div></div>
                  {seer && (<div className="text-right"><div className="text-[10px] text-gray-400 uppercase tracking-wide">Current Role</div><div className={`font-bold flex items-center gap-2 justify-end text-sm ${ROLE_METADATA[seer.currentRole].team === Team.EVIL ? 'text-red-400' : 'text-green-400'}`}>{ROLE_METADATA[seer.currentRole].name}<RoleIcon role={seer.currentRole} className="w-5 h-5" /></div></div>)}
              </div>
              <div className="bg-gray-800/60 p-4 rounded-xl border border-primary/30 flex items-center justify-between shadow-lg">
-                 <div className="flex items-center gap-3"><RoleIcon role={RoleID.APPRENTICE_SEER} className="w-10 h-10" /><div className="flex flex-col"><span className="font-bold text-gray-300 text-sm uppercase tracking-wider">Apprentice</span>{appSeer ? <span className="text-white font-bold text-lg">{appSeer.name}</span> : <span className="text-gray-500 italic">Not in game</span>}</div></div>
+                 <div className="flex items-center gap-2 sm:gap-3"><RoleIcon role={RoleID.APPRENTICE_SEER} className="w-8 h-8 sm:w-10 sm:h-10" /><div className="flex flex-col"><span className="font-bold text-gray-300 text-sm uppercase tracking-wider">Apprentice</span>{appSeer ? <span className="text-white font-bold text-base sm:text-lg">{appSeer.name}</span> : <span className="text-gray-500 italic">Not in game</span>}</div></div>
                  {appSeer && (<div className="text-right"><div className="text-[10px] text-gray-400 uppercase tracking-wide">Current Role</div><div className={`font-bold flex items-center gap-2 justify-end text-sm ${ROLE_METADATA[appSeer.currentRole].team === Team.EVIL ? 'text-red-400' : 'text-green-400'}`}>{ROLE_METADATA[appSeer.currentRole].name}<RoleIcon role={appSeer.currentRole} className="w-5 h-5" /></div></div>)}
              </div>
           </div>
@@ -1122,14 +1122,14 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           .filter(Boolean);
       auraSeerUI = (
           <div className="w-full max-w-md mt-6 animate-fade-in">
-              <h2 className="text-cyan-400 font-bold text-xl mb-4 tracking-widest text-center">AURA DETECTED</h2>
-              <div className="bg-cyan-900/20 border-2 border-cyan-500/40 p-6 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+              <h2 className="text-cyan-400 font-bold text-base sm:text-lg sm:text-xl mb-4 tracking-widest text-center">AURA DETECTED</h2>
+              <div className="bg-cyan-900/20 border-2 border-cyan-500/40 p-4 sm:p-6 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.2)]">
                   {actorPlayers.length > 0 ? (
                       <div className="space-y-3">
                           {actorPlayers.map(p => (
-                              <div key={p.id} className="flex items-center gap-3 bg-gray-800/60 p-3 rounded-lg border border-cyan-500/20">
-                                  <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-300 text-lg">🧿</div>
-                                  <span className="text-white font-bold text-lg">{p.name}</span>
+                              <div key={p.id} className="flex items-center gap-2 sm:gap-3 bg-gray-800/60 p-3 rounded-lg border border-cyan-500/20">
+                                  <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-300 text-base sm:text-lg">🧿</div>
+                                  <span className="text-white font-bold text-base sm:text-lg">{p.name}</span>
                                   <span className="ml-auto text-cyan-400 text-sm italic">moved or viewed a card</span>
                               </div>
                           ))}
@@ -1197,7 +1197,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   const alphaCenterCard = game.centerCards.find(c => c.id === 'center-alpha');
 
   return (
-      <div className="min-h-screen flex flex-col bg-background text-white relative overflow-hidden">
+      <div className="min-h-[100dvh] pt-20 sm:pt-16 flex flex-col bg-background text-white relative overflow-y-auto overflow-x-hidden">
           <style>{`
             .transform-style-3d { transform-style: preserve-3d; }
             .backface-hidden { backface-visibility: hidden; }
@@ -1262,9 +1262,9 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           <div className={`relative z-10 pt-4 pb-2 px-4 text-center border-b border-[#dcf5eb]/8 backdrop-blur-md transform-gpu flex flex-col items-center
              ${(isSquire && squireEvilPlayers.length > 0) || activeRoleID === RoleID.WEREWOLF || activeRoleID === RoleID.MINION || piState.becomeEvil ? 'bg-red-900/20 shadow-[0_0_30px_rgba(153,27,27,0.3)]' : 'bg-[#0d0818]/60'}
           `}>
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center gap-2 sm:gap-3 mb-1">
                   <RoleIcon role={activeRoleID} className="w-8 h-8" />
-                  <h1 className={`text-xl font-display font-bold ${(isSquire && squireEvilPlayers.length > 0) || activeRoleID === RoleID.WEREWOLF || activeRoleID === RoleID.MINION || piState.becomeEvil ? 'text-red-500 animate-pulse' : 'text-white'}`}>{headerTitle}</h1>
+                  <h1 className={`text-base sm:text-lg sm:text-xl font-display font-bold ${(isSquire && squireEvilPlayers.length > 0) || activeRoleID === RoleID.WEREWOLF || activeRoleID === RoleID.MINION || piState.becomeEvil ? 'text-red-500 animate-pulse' : 'text-white'}`}>{headerTitle}</h1>
               </div>
               <p className="text-gray-400 text-xs">{headerDesc}</p>
           </div>
@@ -1277,19 +1277,19 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
               {activeRoleID === RoleID.WEREWOLF && otherEvilPlayers.length > 0 && (
                   <div className="mt-10 text-center animate-fade-in">
-                      <h2 className="text-red-500 font-bold text-2xl mb-4 tracking-widest">EVIL ALIGNMENT</h2>
-                      <div className="bg-red-900/20 border-2 border-red-600/50 p-6 rounded-xl shadow-[0_0_20px_rgba(220,38,38,0.3)]">
+                      <h2 className="text-red-500 font-bold text-base sm:text-lg sm:text-xl sm:text-2xl mb-4 tracking-widest">EVIL ALIGNMENT</h2>
+                      <div className="bg-red-900/20 border-2 border-red-600/50 p-4 sm:p-6 rounded-xl shadow-[0_0_20px_rgba(220,38,38,0.3)]">
                           <p className="text-gray-400 text-sm uppercase mb-2">Your Allies</p>
-                          <div className="flex flex-wrap gap-3 justify-center">{otherEvilPlayers.map(p => (<span key={p.id} className="text-xl font-bold text-white flex items-center gap-2">{p.name} <span className="text-2xl">👹</span></span>))}</div>
+                          <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">{otherEvilPlayers.map(p => (<span key={p.id} className="text-base sm:text-lg sm:text-xl font-bold text-white flex items-center gap-2">{p.name} <span className="text-base sm:text-lg sm:text-xl sm:text-2xl">👹</span></span>))}</div>
                       </div>
                   </div>
               )}
 
               {activeRoleID === RoleID.MINION && (
                   <div className="mt-10 text-center animate-fade-in w-full max-w-md">
-                      <h2 className="text-red-500 font-bold text-2xl mb-4 tracking-widest">EVIL PLAYERS</h2>
-                      <div className="bg-red-900/20 border-2 border-red-600/50 p-6 rounded-xl shadow-[0_0_20px_rgba(220,38,38,0.3)] mb-6">
-                          {otherEvilPlayers.length > 0 ? (<div className="flex flex-wrap gap-4 justify-center">{otherEvilPlayers.map(p => (<span key={p.id} className="text-xl font-bold text-white bg-red-950/50 px-3 py-1 rounded-lg border border-red-500/30">{p.name}</span>))}</div>) : (<p className="text-gray-400 italic">No other evil players found.</p>)}
+                      <h2 className="text-red-500 font-bold text-base sm:text-lg sm:text-xl sm:text-2xl mb-4 tracking-widest">EVIL PLAYERS</h2>
+                      <div className="bg-red-900/20 border-2 border-red-600/50 p-4 sm:p-6 rounded-xl shadow-[0_0_20px_rgba(220,38,38,0.3)] mb-6">
+                          {otherEvilPlayers.length > 0 ? (<div className="flex flex-wrap gap-2 sm:gap-4 justify-center">{otherEvilPlayers.map(p => (<span key={p.id} className="text-base sm:text-lg sm:text-xl font-bold text-white bg-red-950/50 px-3 py-1 rounded-lg border border-red-500/30">{p.name}</span>))}</div>) : (<p className="text-gray-400 italic">No other evil players found.</p>)}
                       </div>
                       <div className="bg-gray-800/50 p-4 rounded-xl border border-white/10 text-sm text-gray-300 leading-relaxed text-left"><strong className="text-primary block mb-1 uppercase text-xs">Winning Conditions</strong>Win if: No evil die OR you’re sole survivor (no Werewolf) OR you die and evil survive.</div>
                   </div>
@@ -1297,9 +1297,9 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
               {activeRoleID === RoleID.MASON && (
                   <div className="mt-10 text-center animate-fade-in w-full max-w-md">
-                      <h2 className="text-blue-400 font-bold text-2xl mb-4 tracking-widest">Ally</h2>
-                      <div className="bg-blue-900/20 border-2 border-blue-600/50 p-6 rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.3)] mb-6">
-                          {otherMasons.length > 0 ? (<div className="flex flex-wrap gap-4 justify-center">{otherMasons.map(p => (<span key={p.id} className="text-xl font-bold text-white bg-blue-950/50 px-3 py-1 rounded-lg border border-blue-500/30">{p.name}</span>))}</div>) : (<p className="text-gray-400 italic">No other Masons found.</p>)}
+                      <h2 className="text-blue-400 font-bold text-base sm:text-lg sm:text-xl sm:text-2xl mb-4 tracking-widest">Ally</h2>
+                      <div className="bg-blue-900/20 border-2 border-blue-600/50 p-4 sm:p-6 rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.3)] mb-6">
+                          {otherMasons.length > 0 ? (<div className="flex flex-wrap gap-2 sm:gap-4 justify-center">{otherMasons.map(p => (<span key={p.id} className="text-base sm:text-lg sm:text-xl font-bold text-white bg-blue-950/50 px-3 py-1 rounded-lg border border-blue-500/30">{p.name}</span>))}</div>) : (<p className="text-gray-400 italic">No other Masons found.</p>)}
                       </div>
                   </div>
               )}
@@ -1308,13 +1308,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   const tannerPlayer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.TANNER || (p.originalRole === RoleID.COPYCAT && p.currentRole === RoleID.TANNER));
                   return (
                       <div className="mt-10 text-center animate-fade-in w-full max-w-md">
-                          <h2 className="text-amber-400 font-bold text-2xl mb-4 tracking-widest">THE TANNER</h2>
-                          <div className="bg-amber-900/20 border-2 border-amber-600/50 p-6 rounded-xl shadow-[0_0_20px_rgba(217,164,71,0.3)] mb-6">
+                          <h2 className="text-amber-400 font-bold text-base sm:text-lg sm:text-xl sm:text-2xl mb-4 tracking-widest">THE TANNER</h2>
+                          <div className="bg-amber-900/20 border-2 border-amber-600/50 p-4 sm:p-6 rounded-xl shadow-[0_0_20px_rgba(217,164,71,0.3)] mb-6">
                               {tannerPlayer ? (
-                                  <span className="text-2xl font-black text-white bg-amber-950/50 px-4 py-2 rounded-lg border border-amber-500/30">{tannerPlayer.name}</span>
+                                  <span className="text-base sm:text-lg sm:text-xl sm:text-2xl font-black text-white bg-amber-950/50 px-4 py-2 rounded-lg border border-amber-500/30">{tannerPlayer.name}</span>
                               ) : (
                                   <div>
-                                      <p className="text-xl font-bold text-amber-300">No Tanner in this game</p>
+                                      <p className="text-base sm:text-lg sm:text-xl font-bold text-amber-300">No Tanner in this game</p>
                                       <p className="text-gray-400 text-sm mt-2">You win only if you die.</p>
                                   </div>
                               )}
@@ -1323,13 +1323,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   );
               })()}
 
-              {isSquire && squireEvilPlayers.length === 0 && (<div className="mt-20 flex flex-col items-center animate-fade-in"><div className="text-6xl mb-4 grayscale opacity-50">🛡️</div><h3 className="text-2xl font-bold text-gray-500">No Evil Detected</h3><p className="text-gray-600 text-sm mt-2">The village seems safe... for now.</p></div>)}
+              {isSquire && squireEvilPlayers.length === 0 && (<div className="mt-20 flex flex-col items-center animate-fade-in"><div className="text-4xl sm:text-6xl mb-4 grayscale opacity-50">🛡️</div><h3 className="text-base sm:text-lg sm:text-xl sm:text-2xl font-bold text-gray-500">No Evil Detected</h3><p className="text-gray-600 text-sm mt-2">The village seems safe... for now.</p></div>)}
 
               {/* Center Cards Section - NOW INCLUDES ALPHA WOLF */}
               {(maxCenter > 0 || activeRoleID === RoleID.ALPHA_WOLF) && !isSquire && !isBeholder && activeRoleID !== RoleID.NOSTRADAMUS && !isInsomniac && activeRoleID !== RoleID.PARANORMAL_INVESTIGATOR && activeRoleID !== RoleID.WITCH && (
                   <div className="mb-8 w-full">
                       <p className="text-[10px] text-center text-gray-500 uppercase tracking-widest mb-3">Center Cards</p>
-                      <div className="flex justify-center items-center gap-4">
+                      <div className="flex justify-center items-center gap-2 sm:gap-4">
                           {standardCenterCards.map(c => (
                               <NightCard 
                                 key={`${c.id}-${c.role}`} // Force refresh on role change
@@ -1363,7 +1363,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               {activeRoleID === RoleID.WITCH && (
                   <div className="mb-8 w-full">
                       <p className="text-[10px] text-center text-gray-500 uppercase tracking-widest mb-3">Center Cards</p>
-                      <div className="flex justify-center gap-4">
+                      <div className="flex justify-center gap-2 sm:gap-4">
                           {standardCenterCards.map(c => (
                               <NightCard 
                                 key={`${c.id}-witch`}
@@ -1410,24 +1410,24 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               )}
 
               {maxPlayers === 0 && maxCenter === 0 && !isBeholder && infoMessage && activeRoleID !== RoleID.MINION && activeRoleID !== RoleID.WEREWOLF && activeRoleID !== RoleID.MASON && !witchState.swapped && activeRoleID !== RoleID.VILLAGE_IDIOT && activeRoleID !== RoleID.ALPHA_WOLF && activeRoleID !== RoleID.PSYCHIC && (
-                   <div className="mt-10 p-6 bg-gray-800/50 rounded-xl border border-white/10 text-center animate-fade-in">
+                   <div className="mt-10 p-4 sm:p-6 bg-gray-800/50 rounded-xl border border-white/10 text-center animate-fade-in">
                        <h3 className="text-primary font-bold mb-2">Information</h3>
                        <p className="text-white">{infoMessage}</p>
                    </div>
               )}
           </div>
 
-          <div className="relative z-20 p-6 bg-gradient-to-t from-[#06030c] via-[#06030c]/90 to-transparent border-t border-[#dcf5eb]/5">
+          <div className="relative z-20 p-4 sm:p-6 bg-gradient-to-t from-[#06030c] via-[#06030c]/90 to-transparent border-t border-[#dcf5eb]/5">
               {step === 'SELECTING' ? (
                   activeRoleID === RoleID.NOSTRADAMUS ? (
-                      <button onClick={handleNostraFinish} disabled={selectedPlayers.length < 2} className={`w-full py-4 rounded-2xl font-black text-xl tracking-widest shadow-lg transition-all transform ${selectedPlayers.length === 2 ? 'bg-gradient-to-r from-primary to-accent text-white hover:scale-[1.02] shadow-primary/30' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}>{selectedPlayers.length < 2 ? 'SELECT 2 CARDS' : 'CONTINUE →'}</button>
+                      <button onClick={handleNostraFinish} disabled={selectedPlayers.length < 2} className={`w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest shadow-lg transition-all transform ${selectedPlayers.length === 2 ? 'bg-gradient-to-r from-primary to-accent text-white hover:scale-[1.02] shadow-primary/30' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}>{selectedPlayers.length < 2 ? 'SELECT 2 CARDS' : 'CONTINUE →'}</button>
                   ) : isSquire ? (
-                      <button onClick={handleSquireFinish} className="w-full py-4 rounded-2xl font-black text-xl tracking-widest bg-gradient-to-r from-red-600 to-red-800 text-white shadow-lg transition-all transform hover:scale-[1.02] shadow-red-500/30">CONTINUE →</button>
+                      <button onClick={handleSquireFinish} className="w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest bg-gradient-to-r from-red-600 to-red-800 text-white shadow-lg transition-all transform hover:scale-[1.02] shadow-red-500/30">CONTINUE →</button>
                   ) : activeRoleID === RoleID.PARANORMAL_INVESTIGATOR ? (
                         <button 
                             onClick={handleFinish} 
                             disabled={!piState.finished && !piState.becomeEvil} 
-                            className={`w-full py-4 rounded-2xl font-black text-xl tracking-widest shadow-lg transition-all transform 
+                            className={`w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest shadow-lg transition-all transform 
                                 ${piState.finished || piState.becomeEvil 
                                     ? 'bg-gradient-to-r from-primary to-accent text-white hover:scale-[1.02] shadow-primary/30 animate-pulse' 
                                     : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
@@ -1437,50 +1437,50 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   ) : activeRoleID === RoleID.WITCH ? (
                         <button 
                             disabled={true} 
-                            className={`w-full py-4 rounded-2xl font-black text-xl tracking-widest shadow-lg transition-all bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5`}
+                            className={`w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest shadow-lg transition-all bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5`}
                         >
                             {witchState.swapped ? 'SWAPPING...' : witchState.centerId ? 'TAP PLAYER TO SWAP' : 'TAP CENTER CARD'}
                         </button>
                   ) : activeRoleID === RoleID.VILLAGE_IDIOT ? (
-                        <div className="flex gap-4">
-                           <button onClick={() => handleVillageIdiotRotate('CLOCKWISE')} className="flex-1 py-4 rounded-2xl font-black text-lg tracking-widest bg-gradient-to-r from-primary to-primary-light text-white shadow-lg transition-all transform hover:scale-[1.02]">
+                        <div className="flex gap-2 sm:gap-4">
+                           <button onClick={() => handleVillageIdiotRotate('CLOCKWISE')} className="flex-1 py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg tracking-widest bg-gradient-to-r from-primary to-primary-light text-white shadow-lg transition-all transform hover:scale-[1.02]">
                                CLOCKWISE ⭕
                            </button>
-                           <button onClick={() => handleVillageIdiotRotate('ANTI-CLOCKWISE')} className="flex-1 py-4 rounded-2xl font-black text-lg tracking-widest bg-gradient-to-r from-accent to-evil text-white shadow-lg transition-all transform hover:scale-[1.02]">
+                           <button onClick={() => handleVillageIdiotRotate('ANTI-CLOCKWISE')} className="flex-1 py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg tracking-widest bg-gradient-to-r from-accent to-evil text-white shadow-lg transition-all transform hover:scale-[1.02]">
                                COUNTER-CLOCK ↺
                            </button>
                         </div>
                   ) : activeRoleID === RoleID.ALPHA_WOLF ? (
                       <button 
                         disabled={true}
-                        className="w-full py-4 rounded-2xl font-black text-xl tracking-widest bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5 shadow-lg"
+                        className="w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5 shadow-lg"
                       >
                           TAP PLAYER TO SWAP
                       </button>
                   ) : activeRoleID === RoleID.PSYCHIC ? (
                       <button 
                         onClick={handlePsychicReveal}
-                        className="w-full py-4 rounded-2xl font-black text-xl tracking-widest bg-gradient-to-r from-primary to-primary-light text-white shadow-lg transition-all transform hover:scale-[1.02] shadow-primary/30"
+                        className="w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest bg-gradient-to-r from-primary to-primary-light text-white shadow-lg transition-all transform hover:scale-[1.02] shadow-primary/30"
                       >
                           READ MINDS
                       </button>
                   ) : (
                       activeRoleID === RoleID.MASON ? (
                           (game.masonReadyPlayers || []).includes(me.id) ? (
-                              <button disabled className="w-full py-4 rounded-2xl font-black text-xl tracking-widest bg-gray-800 text-gray-400 cursor-not-allowed shadow-lg">Waiting for other Mason...</button>
+                              <button disabled className="w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest bg-gray-800 text-gray-400 cursor-not-allowed shadow-lg">Waiting for other Mason...</button>
                           ) : (
-                              <button onClick={() => toggleMasonReady(game.id, me.id)} className="w-full py-4 rounded-2xl font-black text-xl tracking-widest bg-gradient-to-r from-primary to-accent text-white shadow-lg transition-all transform hover:scale-[1.02] shadow-primary/30">CONTINUE</button>
+                              <button onClick={() => toggleMasonReady(game.id, me.id)} className="w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest bg-gradient-to-r from-primary to-accent text-white shadow-lg transition-all transform hover:scale-[1.02] shadow-primary/30">CONTINUE</button>
                           )
                       ) : (
-                          <button onClick={actionBtnText === "CONTINUE" ? handleFinish : executeAction} disabled={!isSelectionValid() || isInsomniac} className={`w-full py-4 rounded-2xl font-black text-xl tracking-widest shadow-lg transition-all transform ${isSelectionValid() && !isInsomniac ? 'bg-gradient-to-r from-primary to-accent text-white hover:scale-[1.02] shadow-primary/30' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}>{actionBtnText}</button>
+                          <button onClick={actionBtnText === "CONTINUE" ? handleFinish : executeAction} disabled={!isSelectionValid() || isInsomniac} className={`w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest shadow-lg transition-all transform ${isSelectionValid() && !isInsomniac ? 'bg-gradient-to-r from-primary to-accent text-white hover:scale-[1.02] shadow-primary/30' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}>{actionBtnText}</button>
                       )
                   )
               ) : copycatPhase === 'COPY' ? (
-                  <button disabled className="w-full py-4 rounded-2xl font-black text-xl tracking-widest bg-gray-800 text-gray-400 cursor-not-allowed shadow-lg animate-pulse">
+                  <button disabled className="w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest bg-gray-800 text-gray-400 cursor-not-allowed shadow-lg animate-pulse">
                       Becoming {copycatTransitionRole ? ROLE_METADATA[copycatTransitionRole]?.name : ''}...
                   </button>
               ) : (
-                  <button onClick={handleFinish} className="w-full py-4 rounded-2xl font-black text-xl tracking-widest bg-gray-700 hover:bg-gray-600 text-white shadow-lg transition-all animate-bounce">CONTINUE →</button>
+                  <button onClick={handleFinish} className="w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest bg-gray-700 hover:bg-gray-600 text-white shadow-lg transition-all animate-bounce">CONTINUE →</button>
               )}
           </div>
           <SeatingButton players={Object.values(game.players) as Player[]} />

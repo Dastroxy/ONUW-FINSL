@@ -17,10 +17,14 @@
   --font-display: 'Cinzel', serif;
 }
 
+html, body {
+  overscroll-behavior-y: none;
+}
+
 body {
   background: linear-gradient(160deg, #090614 0%, #10091e 40%, #090614 100%);
   color: #e8e0d4;
-  min-height: 100vh;
+  min-height: 100dvh;
   -webkit-tap-highlight-color: transparent;
   position: relative;
 }

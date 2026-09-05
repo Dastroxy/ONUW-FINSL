@@ -19,14 +19,14 @@ const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, s
   
   const sizeClasses = {
     sm: 'w-16 h-24 text-xs',
-    md: 'w-28 h-40 text-sm',
-    lg: 'w-48 h-72 text-lg'
+    md: 'w-24 h-32 sm:w-28 sm:h-40 text-xs sm:text-sm',
+    lg: 'w-40 h-60 sm:w-48 sm:h-72 text-sm sm:text-lg'
   };
   
   const iconClasses = {
     sm: 'w-12 h-12',
-    md: 'w-20 h-20',
-    lg: 'w-32 h-32'
+    md: 'w-16 h-16 sm:w-20 sm:h-20',
+    lg: 'w-24 h-24 sm:w-32 sm:h-32'
   };
 
   const teamBorderColor = {

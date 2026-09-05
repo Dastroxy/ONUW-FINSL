@@ -172,7 +172,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
   }
 
   return (
-      <div className="min-h-screen relative flex flex-col items-center p-6 overflow-y-auto overflow-x-hidden"
+      <div className="min-h-[100dvh] pt-20 sm:pt-16 relative flex flex-col items-center p-6 overflow-y-auto overflow-x-hidden"
         style={{ background: 'linear-gradient(160deg, #090614 0%, #0d1228 30%, #12082a 60%, #090614 100%)' }}
       >
           
