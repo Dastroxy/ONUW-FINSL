@@ -69,21 +69,34 @@ export const createGame = async (hostName: string, hostUid: string, icon?: strin
   return roomCode;
 };
 
-export const joinGame = async (gameId: string, playerName: string, playerUid: string, icon?: string) => {
+export const joinGame = async (gameId: string, playerName: string, playerUid: string, icon?: string, baseUid?: string) => {
   const gameRef = doc(db, GAMES_COLLECTION, gameId);
   const snap = await getDoc(gameRef);
   if (!snap.exists()) throw new Error("Game not found");
   
   const game = snap.data() as GameState;
-  if (game.phase !== GamePhase.LOBBY) throw new Error("Game already started");
+  
+  let existingPlayerId = null;
   if (game.players[playerUid]) {
-    // If player rejoins, update their icon and name
-    await updateDoc(gameRef, {
-      [`players.${playerUid}.name`]: playerName,
-      [`players.${playerUid}.icon`]: icon || null
-    });
-    return;
+    existingPlayerId = playerUid;
+  } else if (baseUid) {
+    const players = Object.values(game.players) as Player[];
+    const match = players.find(p => p.id.startsWith(baseUid + '_'));
+    if (match) existingPlayerId = match.id;
   }
+
+  if (existingPlayerId) {
+    // If player rejoins in lobby, update their icon and name
+    if (game.phase === GamePhase.LOBBY) {
+      await updateDoc(gameRef, {
+        [`players.${existingPlayerId}.name`]: playerName,
+        [`players.${existingPlayerId}.icon`]: icon || null
+      });
+    }
+    return existingPlayerId;
+  }
+
+  if (game.phase !== GamePhase.LOBBY) throw new Error("Game already started");
 
   const newPlayer: Player = {
     id: playerUid,

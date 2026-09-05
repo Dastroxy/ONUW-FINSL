@@ -49,13 +49,16 @@ const HomePage: React.FC = () => {
     if (!name || !joinCode || !user) return;
     try {
       const code = joinCode.toUpperCase();
-      const playerId = generateUniqueId(user.uid);
-      await joinGame(code, name, playerId, icon);
-      localStorage.setItem(`onuw_player_id_${code}`, playerId);
+      let playerId = localStorage.getItem(`onuw_player_id_${code}`);
+      if (!playerId) {
+        playerId = generateUniqueId(user.uid);
+      }
+      const actualPlayerId = await joinGame(code, name, playerId, icon, user.uid);
+      localStorage.setItem(`onuw_player_id_${code}`, actualPlayerId || playerId);
       navigate(`/game/${code}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      setError('Failed to join game. Check code.');
+      setError(e.message || 'Failed to join game. Check code.');
     }
   };
 
@@ -433,7 +436,7 @@ const HomePage: React.FC = () => {
             <div className="relative">
               <button 
                 onClick={() => setShowIconSelect(true)}
-                className="identity-input !p-0 w-[64px] h-[64px] flex-shrink-0 flex items-center justify-center hover:bg-surface/60 transition-colors overflow-hidden rounded-xl border-2 border-transparent hover:border-primary/50"
+                className="identity-input !p-0 !w-[64px] !h-[64px] flex-shrink-0 flex items-center justify-center hover:bg-surface/60 transition-colors overflow-hidden rounded-xl border-2 border-transparent hover:border-primary/50"
                 style={{ marginBottom: 0 }}
               >
                 {icon.includes('/') ? <img src={icon} alt="avatar" className="w-full h-full object-cover rounded-xl" /> : icon}
