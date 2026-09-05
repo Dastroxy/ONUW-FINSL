@@ -884,6 +884,18 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   setPiState({ checks: 0, becomeEvil: false, finished: false });
                   setWitchState({ centerId: null, centerRole: null, swapped: false });
                   setViDirection(null);
+                  setSelectedArtifactIndex(null);
+                  setSelectedArtifactToken(null);
+                  if (normalizedRole === RoleID.CURATOR) {
+                      const pool = game.curatorArtifacts && game.curatorArtifacts.length > 0
+                        ? [...game.curatorArtifacts]
+                        : [...DEFAULT_CURATOR_ARTIFACTS];
+                      for (let i = pool.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [pool[i], pool[j]] = [pool[j], pool[i]];
+                      }
+                      setShuffledArtifacts(pool);
+                  }
               }, 1200);
               return;
           }
@@ -910,6 +922,18 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   setPiState({ checks: 0, becomeEvil: false, finished: false });
                   setWitchState({ centerId: null, centerRole: null, swapped: false });
                   setViDirection(null);
+                  setSelectedArtifactIndex(null);
+                  setSelectedArtifactToken(null);
+                  if (normalizedRole === RoleID.CURATOR) {
+                      const pool = game.curatorArtifacts && game.curatorArtifacts.length > 0
+                        ? [...game.curatorArtifacts]
+                        : [...DEFAULT_CURATOR_ARTIFACTS];
+                      for (let i = pool.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [pool[i], pool[j]] = [pool[j], pool[i]];
+                      }
+                      setShuffledArtifacts(pool);
+                  }
               }, 1200);
               return;
           }
@@ -1661,6 +1685,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           {curatorInfoModalOpen && (
             <ArtifactsInfoModal 
               selectedArtifact={curatorSelectedArtifactInfo}
+              allowedArtifactIds={game.curatorArtifacts && game.curatorArtifacts.length > 0 ? game.curatorArtifacts : DEFAULT_CURATOR_ARTIFACTS}
               onClose={() => { setCuratorInfoModalOpen(false); setCuratorSelectedArtifactInfo(null); }}
             />
           )}
