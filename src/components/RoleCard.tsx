@@ -2,6 +2,7 @@
 import React from 'react';
 import { RoleID, Team } from '../types';
 import { ROLE_METADATA } from '../constants';
+import { ARTIFACT_METADATA, ArtifactID } from '../constants/artifacts';
 import RoleIcon from './RoleIcons';
 
 interface Props {
@@ -12,10 +13,25 @@ interface Props {
   selected?: boolean;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  artifact?: string | null;
+  isArtifactOwner?: boolean;
+  marks?: string[];
 }
 
-const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, selected, className = '', size = 'md' }) => {
+const RoleCard: React.FC<Props> = ({ 
+  role, 
+  revealed = false, 
+  flipped, 
+  onClick, 
+  selected, 
+  className = '', 
+  size = 'md',
+  artifact,
+  isArtifactOwner = false,
+  marks = []
+}) => {
   const metadata = ROLE_METADATA[role] || { name: 'Unknown', team: Team.INDEPENDENT, description: '' };
+  const artifactMeta = artifact ? ARTIFACT_METADATA[artifact as ArtifactID] : null;
   
   const sizeClasses = {
     sm: 'w-16 h-24 text-xs',
@@ -127,6 +143,37 @@ const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, s
         className={`relative cursor-pointer ${sizeClasses[size]} ${selected ? 'scale-125 ring-4 ring-white z-10' : 'scale-110 hover:scale-115'} ${className}`}
         style={{ perspective: '1000px' }}
       >
+        {/* Artifact Token Badge */}
+        {artifact && (
+          <div 
+            className="absolute top-1.5 left-1.5 z-30 flex items-center gap-1 bg-amber-500/25 border border-amber-400/80 rounded-lg px-1.5 py-0.5 shadow-[0_0_12px_rgba(245,158,11,0.6)] backdrop-blur-md pointer-events-none"
+            title={isArtifactOwner && artifactMeta ? artifactMeta.name : 'Artifact Token Attached'}
+          >
+            <span className="text-xs sm:text-sm drop-shadow-md">
+              {isArtifactOwner && artifactMeta ? artifactMeta.icon : '🏺'}
+            </span>
+            {isArtifactOwner && artifactMeta && size !== 'sm' && (
+              <span className="text-[9px] font-bold text-amber-200 tracking-wider hidden sm:inline max-w-[60px] truncate">
+                {artifactMeta.shortName}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Marks Badges */}
+        {marks && marks.length > 0 && (
+          <div className="absolute bottom-1.5 left-1.5 z-30 flex flex-wrap gap-1 pointer-events-none">
+            {marks.map((m, idx) => (
+              <span 
+                key={idx} 
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/30 border border-purple-400 text-purple-200 shadow-[0_0_8px_rgba(168,85,247,0.4)] backdrop-blur-md"
+              >
+                {m}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div
           className="relative w-full h-full transition-transform duration-700"
           style={{
@@ -161,6 +208,37 @@ const RoleCard: React.FC<Props> = ({ role, revealed = false, flipped, onClick, s
           : '0 0 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(220,245,235,0.04)'
       }}
     >
+      {/* Artifact Token Badge */}
+      {artifact && (
+        <div 
+          className="absolute top-1.5 left-1.5 z-30 flex items-center gap-1 bg-amber-500/25 border border-amber-400/80 rounded-lg px-1.5 py-0.5 shadow-[0_0_12px_rgba(245,158,11,0.6)] backdrop-blur-md pointer-events-none"
+          title={isArtifactOwner && artifactMeta ? artifactMeta.name : 'Artifact Token Attached'}
+        >
+          <span className="text-xs sm:text-sm drop-shadow-md">
+            {isArtifactOwner && artifactMeta ? artifactMeta.icon : '🏺'}
+          </span>
+          {isArtifactOwner && artifactMeta && size !== 'sm' && (
+            <span className="text-[9px] font-bold text-amber-200 tracking-wider hidden sm:inline max-w-[60px] truncate">
+              {artifactMeta.shortName}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Marks Badges */}
+      {marks && marks.length > 0 && (
+        <div className="absolute bottom-1.5 left-1.5 z-30 flex flex-wrap gap-1 pointer-events-none">
+          {marks.map((m, idx) => (
+            <span 
+              key={idx} 
+              className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/30 border border-purple-400 text-purple-200 shadow-[0_0_8px_rgba(168,85,247,0.4)] backdrop-blur-md"
+            >
+              {m}
+            </span>
+          ))}
+        </div>
+      )}
+
       {noiseOverlay}
 
       <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center h-full z-10">

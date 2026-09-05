@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GameState, Player, RoleID, Team } from '../types';
 import { performNightAction, advanceNightTurn, toggleMasonReady, COPYCAT_DEFERRED_ROLES, DOPPELGANGER_IMMEDIATE_ROLES, DOPPELGANGER_DEFERRED_ROLES } from '../services/firestoreService';
 import { ROLE_METADATA } from '../constants';
+import { ARTIFACT_METADATA, ArtifactID, DEFAULT_CURATOR_ARTIFACTS } from '../constants/artifacts';
+import ArtifactsInfoModal from '../components/ArtifactsInfoModal';
 import RoleCard from '../components/RoleCard';
 import RoleIcon from '../components/RoleIcons';
 import SeatingButton from '../components/SeatingButton';
@@ -38,6 +40,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   // Psychic specific states
   const [psychicSeenRole, setPsychicSeenRole] = useState<RoleID | null>(null);
   const [psychicNeighborId, setPsychicNeighborId] = useState<string | null>(null);
+
+  // Curator specific states
+  const [shuffledArtifacts, setShuffledArtifacts] = useState<string[]>([]);
+  const [selectedArtifactIndex, setSelectedArtifactIndex] = useState<number | null>(null);
+  const [selectedArtifactToken, setSelectedArtifactToken] = useState<string | null>(null);
+  const [curatorInfoModalOpen, setCuratorInfoModalOpen] = useState<boolean>(false);
+  const [curatorSelectedArtifactInfo, setCuratorSelectedArtifactInfo] = useState<string | null>(null);
 
   // Copycat immediate-action states
   const [copycatCopiedRole, setCopycatCopiedRole] = useState<RoleID | null>(null);
@@ -75,7 +84,25 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
     setCopycatCopiedRole(null);
     setCopycatPhase(null);
     setCopycatTransitionRole(null);
+    setSelectedArtifactIndex(null);
+    setSelectedArtifactToken(null);
   }, [game.currentNightRoleIndex]);
+
+  // Curator Shuffled Tokens Initializer
+  useEffect(() => {
+    if (activeRoleID === RoleID.CURATOR) {
+      const pool = game.curatorArtifacts && game.curatorArtifacts.length > 0
+        ? [...game.curatorArtifacts]
+        : [...DEFAULT_CURATOR_ARTIFACTS];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      setShuffledArtifacts(pool);
+      setSelectedArtifactIndex(null);
+      setSelectedArtifactToken(null);
+    }
+  }, [activeRoleID, game.currentNightRoleIndex]);
 
   // Visual Sync Check
   useEffect(() => {
@@ -274,13 +301,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
   const otherEvilPlayers = (Object.values(game.players) as Player[]).filter(p => 
       p.id !== me.id && 
-      (ROLE_METADATA[p.currentRole].team === Team.EVIL || (p.originalRole === RoleID.COPYCAT && ROLE_METADATA[p.currentRole].team === Team.EVIL)) &&
+      (ROLE_METADATA[p.currentRole].team === Team.EVIL || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && ROLE_METADATA[p.currentRole].team === Team.EVIL)) &&
       (activeRoleID === RoleID.MINION || p.currentRole !== RoleID.MINION)
   );
 
   const otherMasons = (Object.values(game.players) as Player[]).filter(p => 
       p.id !== me.id && 
-      (p.originalRole === RoleID.MASON || p.originalRole === RoleID.MASON_2)
+      (p.originalRole === RoleID.MASON || p.originalRole === RoleID.MASON_2 || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && (p.currentRole === RoleID.MASON || p.currentRole === RoleID.MASON_2)))
   );
 
   switch (activeRoleID) {
@@ -297,7 +324,12 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
     case RoleID.MYSTIC_WOLF: maxPlayers = 1; actionBtnText = "REVEAL"; break;
     case RoleID.SENTINEL: maxPlayers = 1; actionBtnText = "SHIELD"; break;
     case RoleID.REVEALER: maxPlayers = 1; actionBtnText = "REVEAL"; break;
-    case RoleID.CURATOR: maxPlayers = 1; actionBtnText = "PLACE ARTIFACT"; break;
+    case RoleID.CURATOR: 
+      maxPlayers = 1; 
+      if (!selectedArtifactToken) actionBtnText = "PICK ARTIFACT TOKEN";
+      else if (selectedPlayers.length === 0) actionBtnText = "TAP A PLAYER";
+      else actionBtnText = "PLACE ARTIFACT";
+      break;
     case RoleID.ALPHA_WOLF: maxPlayers = 1; actionBtnText = "SWAP W/ WOLF"; break;
     case RoleID.CUPID: maxPlayers = 2; actionBtnText = "LINK"; break;
     case RoleID.DISEASED: maxPlayers = 1; actionBtnText = "INFECT"; break;
@@ -344,10 +376,10 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   const squireEvilPlayers = isSquire 
     ? (Object.values(game.players) as Player[]).filter(p => 
         p.id !== me.id && 
-        (ROLE_METADATA[p.originalRole].team === Team.EVIL || (p.originalRole === RoleID.COPYCAT && ROLE_METADATA[p.currentRole].team === Team.EVIL)) &&
+        (ROLE_METADATA[p.originalRole].team === Team.EVIL || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && ROLE_METADATA[p.currentRole].team === Team.EVIL)) &&
         p.originalRole !== RoleID.SQUIRE && 
         p.originalRole !== RoleID.MINION &&
-        !(p.originalRole === RoleID.COPYCAT && (p.currentRole === RoleID.MINION || p.currentRole === RoleID.SQUIRE))
+        !((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && (p.currentRole === RoleID.MINION || p.currentRole === RoleID.SQUIRE))
       )
     : [];
 
@@ -355,9 +387,27 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
   const handlePlayerClick = async (pid: string) => {
       if (step !== 'SELECTING') return;
-      if (pid === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN].includes(activeRoleID)) return; 
+      if (pid === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN, RoleID.CURATOR].includes(activeRoleID)) return; 
       
       const targetPlayer = game.players[pid];
+      
+      // CURATOR SELECTION LOGIC
+      if (activeRoleID === RoleID.CURATOR) {
+          if (targetPlayer.artifact) {
+              setInfoMessage("🏺 Target already has an Artifact Token!");
+              return;
+          }
+          if (targetPlayer.shielded) {
+              setInfoMessage("🛡️ Blocked! Target is shielded.");
+              return;
+          }
+          if (selectedPlayers.includes(pid)) {
+              setSelectedPlayers([]);
+          } else {
+              setSelectedPlayers([pid]);
+          }
+          return;
+      }
       
       // SHIELD BLOCKING LOGIC
       if (targetPlayer.shielded && activeRoleID !== RoleID.SENTINEL) {
@@ -640,6 +690,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
       if (activeRoleID === RoleID.MASON) return true;
       if (activeRoleID === RoleID.ALPHA_WOLF) return true; // Just click to swap
       if (activeRoleID === RoleID.PSYCHIC) return true;
+      if (activeRoleID === RoleID.CURATOR) return !!selectedArtifactToken && selectedPlayers.length === 1;
       if (maxPlayers > 0) return selectedPlayers.length === maxPlayers;
       if (maxCenter > 0) return selectedCenter.length === maxCenter;
       return true;
@@ -656,6 +707,21 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
       // ALPHA WOLF handled by click event directly
       if (activeRoleID === RoleID.ALPHA_WOLF) {
+          setStep('FINISHED');
+          return;
+      }
+
+      // CURATOR uses PLACE_TOKEN with chosen artifact token
+      if (activeRoleID === RoleID.CURATOR) {
+          if (!selectedArtifactToken || selectedPlayers.length === 0) return;
+          setStep('ANIMATING');
+          setInfoMessage("Artifact Token Placed 🏺");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'PLACE_TOKEN',
+              targetPlayerId: selectedPlayers[0],
+              artifactToken: selectedArtifactToken
+          });
           setStep('FINISHED');
           return;
       }
@@ -883,11 +949,11 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   // ------------------------------------------------------------------
   const NightCard: React.FC<{ 
       id: string, label: string, role?: RoleID, isCenter?: boolean, 
-      isSelected: boolean, isRevealed: boolean, isSwapping: boolean, isShielded?: boolean,
+      isSelected: boolean, isRevealed: boolean, isSwapping: boolean, isShielded?: boolean, hasArtifact?: boolean,
       onClick: () => void, disabled: boolean, innerRef?: React.Ref<HTMLButtonElement>, style?: React.CSSProperties,
       className?: string
   }> = ({ 
-      id, label, role, isCenter, isSelected, isRevealed, isSwapping, isShielded, onClick, disabled, innerRef, style, className 
+      id, label, role, isCenter, isSelected, isRevealed, isSwapping, isShielded, hasArtifact, onClick, disabled, innerRef, style, className 
   }) => {
       const revealedRole = isRevealed && role ? role : null;
       const meta = revealedRole ? ROLE_METADATA[revealedRole] : null;
@@ -903,10 +969,10 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                 disabled={disabled}
                 style={style}
                 className={`
-                    relative w-28 h-40 rounded-xl transition-all duration-500 transform-style-3d cursor-pointer group
+                    relative w-24 h-36 sm:w-28 sm:h-40 rounded-xl transition-all duration-300 transform-style-3d cursor-pointer group
                     ${isSelected 
-                        ? 'ring-4 ring-primary scale-110 -translate-y-2 z-10 shadow-[0_0_20px_rgba(18,184,134,0.5)]' 
-                        : 'scale-110 hover:scale-115 z-0'
+                        ? 'ring-3 sm:ring-4 ring-primary scale-105 -translate-y-1 sm:-translate-y-2 z-10 shadow-[0_0_20px_rgba(18,184,134,0.5)]' 
+                        : 'scale-100 hover:scale-105 z-0'
                     }
                     ${style ? 'troublemaker-card' : isSwapping ? 'animate-swap' : ''}
                     ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
@@ -917,6 +983,11 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                 {/* Shield Token */}
                 {isShielded && (
                      <div key={`shield-${id}-${isShielded ? 'on' : 'off'}`} className="shield-token">🛡️</div>
+                )}
+
+                {/* Artifact Token */}
+                {hasArtifact && (
+                     <div key={`artifact-${id}`} className="absolute -top-2 -left-2 z-30 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500/30 border border-amber-400 flex items-center justify-center text-xs sm:text-sm shadow-[0_0_15px_rgba(245,158,11,0.6)] backdrop-blur-md animate-fade-in" title="Artifact Token">🏺</div>
                 )}
                 
                 <div className={`
@@ -936,8 +1007,8 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                     `}>
                         {meta && (
                             <>
-                                <RoleIcon role={revealedRole!} className="w-16 h-16 mb-1" />
-                                <span className="text-sm font-bold text-center leading-tight text-white">{meta.name}</span>
+                                <RoleIcon role={revealedRole!} className="w-12 h-12 sm:w-16 sm:h-16 mb-1" />
+                                <span className="text-xs sm:text-sm font-bold text-center leading-tight text-white line-clamp-1">{meta.name}</span>
                             </>
                         )}
                     </div>
@@ -945,11 +1016,10 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
             </button>
             <span 
                 className={`
-                    relative z-20 mt-3 font-bold transition-colors text-center whitespace-nowrap
+                    relative z-20 mt-2 font-bold transition-colors text-center truncate max-w-[90px] sm:max-w-[110px] text-xs sm:text-sm
                     ${isSelected ? 'text-primary' : 'text-gray-200'}
                 `}
                 style={{
-                    fontSize: '1.1rem',
                     lineHeight: '1.2',
                     textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
                 }}
@@ -1014,10 +1084,17 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   let headerTitle = roleMeta.name;
   let headerDesc = step === 'FINISHED' ? infoMessage || "Complete" : roleMeta.description;
 
+  const isDoppel = currentRoleID === RoleID.DOPPELGANGER || me.originalRole === RoleID.DOPPELGANGER;
+  const isCopycat = currentRoleID === RoleID.COPYCAT || me.originalRole === RoleID.COPYCAT;
+
   if (copycatPhase === 'ACTION' && copycatCopiedRole) {
       const copiedMeta = ROLE_METADATA[copycatCopiedRole];
-      headerTitle = `COPYCAT → ${copiedMeta.name}`;
+      const sourceName = isDoppel ? 'Doppelgänger' : 'Copycat';
+      headerTitle = `${sourceName} → ${copiedMeta.name}`;
       if (step !== 'FINISHED') headerDesc = copiedMeta.description;
+  } else if ((isDoppel || isCopycat) && me.currentRole !== me.originalRole) {
+      const sourceName = isDoppel ? 'Doppelgänger' : 'Copycat';
+      headerTitle = `${sourceName} → ${roleMeta.name}`;
   }
   let nostradamusResult = null;
 
@@ -1131,8 +1208,8 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   let beholderUI = null;
   if (isBeholder) {
       headerTitle = "BEHOLDER INFO"; headerDesc = "Review Seer locations";
-      const seer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.SEER || (p.originalRole === RoleID.COPYCAT && p.currentRole === RoleID.SEER));
-      const appSeer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.APPRENTICE_SEER || (p.originalRole === RoleID.COPYCAT && p.currentRole === RoleID.APPRENTICE_SEER));
+      const seer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.SEER));
+      const appSeer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.APPRENTICE_SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.APPRENTICE_SEER));
       beholderUI = (
           <div className="w-full max-w-md mt-6 space-y-4 animate-fade-in">
              <div className="bg-gray-800/60 p-4 rounded-xl border border-good/30 flex items-center justify-between shadow-lg">
@@ -1183,7 +1260,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   // APPRENTICE TANNER HEADER
   if (activeRoleID === RoleID.APPRENTICE_TANNER) {
       headerTitle = "APPRENTICE TANNER 🎭";
-      const tannerPlayer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.TANNER || (p.originalRole === RoleID.COPYCAT && p.currentRole === RoleID.TANNER));
+      const tannerPlayer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.TANNER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.TANNER));
       if (tannerPlayer) {
           headerDesc = `The Tanner is: ${tannerPlayer.name}`;
       } else {
@@ -1339,7 +1416,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               )}
 
               {activeRoleID === RoleID.APPRENTICE_TANNER && (() => {
-                  const tannerPlayer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.TANNER || (p.originalRole === RoleID.COPYCAT && p.currentRole === RoleID.TANNER));
+                  const tannerPlayer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.TANNER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.TANNER));
                   return (
                       <div className="mt-10 text-center animate-fade-in w-full max-w-md">
                           <h2 className="text-amber-400 font-bold text-base sm:text-lg sm:text-xl sm:text-2xl mb-4 tracking-widest">THE TANNER</h2>
@@ -1363,7 +1440,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               {(maxCenter > 0 || activeRoleID === RoleID.ALPHA_WOLF) && !isSquire && !isBeholder && activeRoleID !== RoleID.NOSTRADAMUS && !isInsomniac && activeRoleID !== RoleID.PARANORMAL_INVESTIGATOR && activeRoleID !== RoleID.WITCH && (
                   <div className="mb-8 w-full">
                       <p className="text-[10px] text-center text-gray-500 uppercase tracking-widest mb-3">Center Cards</p>
-                      <div className="flex justify-center items-center gap-2 sm:gap-4">
+                      <div className="flex justify-center items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap px-1">
                           {standardCenterCards.map(c => (
                               <NightCard 
                                 key={`${c.id}-${c.role}`} // Force refresh on role change
@@ -1377,7 +1454,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
                           {/* ALPHA WOLF PERPENDICULAR CARD */}
                           {activeRoleID === RoleID.ALPHA_WOLF && alphaCenterCard && (
-                              <div className="ml-8 border-l border-white/10 pl-8">
+                              <div className="ml-3 sm:ml-6 border-l border-white/10 pl-3 sm:pl-6">
                                 <NightCard 
                                     key={`${alphaCenterCard.id}-${alphaCenterCard.role}`}
                                     id={alphaCenterCard.id} label="Alpha Wolf" role={alphaCenterCard.role} isCenter={true}
@@ -1397,7 +1474,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               {activeRoleID === RoleID.WITCH && (
                   <div className="mb-8 w-full">
                       <p className="text-[10px] text-center text-gray-500 uppercase tracking-widest mb-3">Center Cards</p>
-                      <div className="flex justify-center gap-2 sm:gap-4">
+                      <div className="flex justify-center items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap px-1">
                           {standardCenterCards.map(c => (
                               <NightCard 
                                 key={`${c.id}-witch`}
@@ -1415,14 +1492,75 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   </div>
               )}
 
+              {/* CURATOR ARTIFACT TOKEN PICKER */}
+              {activeRoleID === RoleID.CURATOR && (
+                <div className="w-full max-w-xl mx-auto mb-6 p-4 rounded-2xl bg-amber-950/30 border border-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.2)] backdrop-blur-md animate-fade-in">
+                  <div className="flex justify-between items-center mb-3">
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-amber-400">Step 1: Mystery Relic</span>
+                      <h4 className="text-sm font-bold text-moon">Choose a Face-Down Artifact Token</h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setCuratorSelectedArtifactInfo(null); setCuratorInfoModalOpen(true); }}
+                      className="px-2.5 py-1 text-xs rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-200 hover:bg-amber-500/30 transition-all font-semibold flex items-center gap-1.5"
+                    >
+                      <span>Token Rules</span>
+                      <span className="w-3.5 h-3.5 rounded-full bg-amber-400 text-black flex items-center justify-center text-[10px] font-bold">i</span>
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap justify-center gap-2 sm:gap-3 py-2">
+                    {shuffledArtifacts.map((artId, idx) => {
+                      const isChosen = selectedArtifactIndex === idx;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          disabled={step === 'FINISHED'}
+                          onClick={() => {
+                            setSelectedArtifactIndex(idx);
+                            setSelectedArtifactToken(artId);
+                          }}
+                          className={`
+                            relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center
+                            ${isChosen
+                              ? 'bg-amber-900/60 border-amber-400 scale-105 shadow-[0_0_20px_rgba(245,158,11,0.6)] ring-2 ring-amber-300 -translate-y-1'
+                              : 'bg-black/60 border-amber-500/30 hover:border-amber-400/70 hover:scale-105'}
+                            ${step === 'FINISHED' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                          `}
+                        >
+                          <span className="text-2xl sm:text-3xl drop-shadow-md">🏺</span>
+                          <span className="text-[10px] font-mono font-bold text-amber-200/80 mt-1">
+                            #{idx + 1}
+                          </span>
+                          {isChosen && (
+                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-amber-400 text-black font-black text-[10px] flex items-center justify-center shadow-md">
+                              ✓
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedArtifactToken && (
+                    <p className="text-center text-xs font-semibold text-amber-300 mt-2 animate-fade-in">
+                      Token #{selectedArtifactIndex! + 1} selected! Now tap any player below (or yourself) to place it.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {((maxPlayers > 0 || activeRoleID === RoleID.NOSTRADAMUS) || (isSquire && squireEvilPlayers.length > 0) || isInsomniac || activeRoleID === RoleID.PARANORMAL_INVESTIGATOR || (activeRoleID === RoleID.WITCH && witchState.centerId) || activeRoleID === RoleID.VILLAGE_IDIOT || activeRoleID === RoleID.ALPHA_WOLF) && (
                   <div className={`w-full max-w-lg mt-4 ${isSquire ? 'p-4 rounded-3xl bg-red-900/10 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]' : ''}`}>
                       {!isInsomniac && <p className="text-[10px] text-center text-gray-500 uppercase tracking-widest mb-3">Players</p>}
-                      <div className={`grid ${isInsomniac ? 'grid-cols-1 justify-center' : 'grid-cols-3'} gap-x-2 gap-y-6 place-items-center`}>
+                      <div className={`grid ${isInsomniac ? 'grid-cols-1 justify-center' : 'grid-cols-3'} gap-x-2 sm:gap-x-4 gap-y-5 sm:gap-y-6 place-items-center px-1`}>
                           {visiblePlayers.map(p => {
                               const roleToReveal = revealedIds[p.id] || p.currentRole; 
                               // Visual check: Show shield if DB says so, OR if Sentinel just selected them (instant feedback)
                               const showShield = p.shielded || (activeRoleID === RoleID.SENTINEL && selectedPlayers.includes(p.id));
+                              // Visual check: Show artifact token if DB says so, OR if Curator just selected them with a token chosen
+                              const showArtifact = !!p.artifact || (activeRoleID === RoleID.CURATOR && selectedPlayers.includes(p.id) && !!selectedArtifactToken);
 
                               return (
                                   <NightCard 
@@ -1430,7 +1568,8 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                                     id={p.id} label={p.name} role={roleToReveal}
                                     isSelected={selectedPlayers.includes(p.id)} isRevealed={!!revealedIds[p.id]} isSwapping={swappingIds.includes(p.id)}
                                     isShielded={showShield}
-                                    disabled={step === 'FINISHED' || (p.id === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN].includes(activeRoleID)) || activeRoleID === RoleID.VILLAGE_IDIOT}
+                                    hasArtifact={showArtifact}
+                                    disabled={step === 'FINISHED' || (p.id === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN, RoleID.CURATOR].includes(activeRoleID)) || activeRoleID === RoleID.VILLAGE_IDIOT || (activeRoleID === RoleID.CURATOR && !!p.artifact)}
                                     onClick={() => handlePlayerClick(p.id)}
                                     innerRef={(el) => { if (el) itemsRef.current.set(p.id, el); }}
                                     style={tmStyles[p.id]}
@@ -1518,6 +1657,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               )}
           </div>
           <SeatingButton players={Object.values(game.players) as Player[]} />
+
+          {curatorInfoModalOpen && (
+            <ArtifactsInfoModal 
+              selectedArtifact={curatorSelectedArtifactInfo}
+              onClose={() => { setCuratorInfoModalOpen(false); setCuratorSelectedArtifactInfo(null); }}
+            />
+          )}
       </div>
   );
 };

@@ -7,6 +7,8 @@ import RoleIcon from '../components/RoleIcons';
 import RolesInfoButton from '../components/RolesInfoButton';
 import SeatingButton from '../components/SeatingButton';
 import { ROLE_METADATA } from '../constants';
+import { ARTIFACT_METADATA, ArtifactID } from '../constants/artifacts';
+import ArtifactsInfoModal from '../components/ArtifactsInfoModal';
 
 interface Props {
   game: GameState;
@@ -15,6 +17,8 @@ interface Props {
 
 const DiscussionPage: React.FC<Props> = ({ game, me }) => {
   const [timeLeft, setTimeLeft] = useState<number>(300);
+  const [showArtifactModal, setShowArtifactModal] = useState<boolean>(false);
+  const [selectedArtifactForModal, setSelectedArtifactForModal] = useState<string | null>(null);
   
   // Timer Sync
   useEffect(() => {
@@ -40,6 +44,10 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
   const readyCount = (game.discussionReadyPlayers || []).length;
   const totalPlayers = Object.keys(game.players).length;
   const revealedPlayers = Object.values(game.players).filter(p => p.isRevealed);
+  const playersWithArtifact = Object.values(game.players).filter(p => !!p.artifact);
+  const myArtifact = me.artifact as ArtifactID | undefined;
+  const myArtifactMeta = myArtifact ? ARTIFACT_METADATA[myArtifact] : null;
+  const myRoleMeta = ROLE_METADATA[me.currentRole];
 
   // Particle generation
   const particles = Array.from({ length: 20 }).map((_, i) => ({
@@ -112,6 +120,133 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                   <div className="bg-[#130e26]/90 border-2 border-[#1a122e] px-6 py-4 rounded-xl shadow-[0_0_30px_rgba(100,80,180,0.3),0_0_10px_rgba(220,245,235,0.1)] text-center">
                       <h3 className="text-[#7eb8c9] text-xs font-display font-bold uppercase tracking-widest mb-1">Public Announcement</h3>
                       <p className="text-[#dcf5eb] font-bold text-base sm:text-lg">{game.nostradamusAnnouncement}</p>
+                  </div>
+              </div>
+          )}
+
+          {/* CURATOR ARTIFACT TOKEN - PERSONAL NOTIFICATION */}
+          {myArtifact && myArtifactMeta && (
+              <div className="relative z-20 mt-6 w-full max-w-xl animate-fade-in px-2">
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/80 via-amber-900/60 to-amber-950/80 border-2 border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.35)] text-center relative backdrop-blur-md">
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                          <span className="text-2xl">{myArtifactMeta.icon}</span>
+                          <h3 className="text-amber-300 text-sm font-display font-black uppercase tracking-wider">
+                              Curator Placed An Artifact On You!
+                          </h3>
+                          <button
+                              type="button"
+                              onClick={() => { setSelectedArtifactForModal(myArtifact); setShowArtifactModal(true); }}
+                              className="w-4 h-4 rounded-full bg-amber-400 text-black flex items-center justify-center text-[10px] font-bold hover:scale-110 ml-1"
+                              title="Artifact details"
+                          >
+                              i
+                          </button>
+                      </div>
+
+                      <div className="text-white font-bold text-base sm:text-lg mb-1">
+                          {myArtifactMeta.name}
+                      </div>
+
+                      {myArtifact === ArtifactID.MASK_OF_MUTING ? (
+                          <p className="text-red-300 text-xs sm:text-sm font-semibold bg-red-950/60 py-1.5 px-3 rounded-lg border border-red-500/40 inline-block">
+                              🤐 You are Muted! You cannot speak, whisper, or make noise during this discussion phase.
+                          </p>
+                      ) : myArtifact === ArtifactID.VOID_OF_NOTHINGNESS ? (
+                          <p className="text-amber-200/80 text-xs sm:text-sm">
+                              The void has no effect on you.
+                          </p>
+                      ) : myArtifact === ArtifactID.DAGGER_OF_THE_TRAITOR ? (
+                          <p className="text-red-400 text-xs sm:text-sm font-semibold">
+                              🗡️ You are a Traitor! You win ONLY if a member of your team is eliminated.
+                          </p>
+                      ) : (
+                          <p className="text-amber-200 text-xs sm:text-sm">
+                              Your role has changed! You are now on team <span className="font-bold uppercase text-white">{myRoleMeta?.team}</span> as <span className="font-bold text-amber-300">{myRoleMeta?.name}</span>.
+                          </p>
+                      )}
+                  </div>
+              </div>
+          )}
+
+          {/* ARTIFACT TOKENS ON CARDS (Visible to all, identity hidden except for owner) */}
+          {playersWithArtifact.length > 0 && (
+              <div className="relative z-20 mt-6 w-full max-w-xl flex flex-col items-center animate-fade-in-up px-2">
+                  <div className="flex items-center gap-2 mb-3">
+                      <span className="text-base">🏺</span>
+                      <h3 className="text-amber-300 font-bold text-xs uppercase tracking-widest">
+                          Artifact Tokens on Cards
+                      </h3>
+                      <button
+                          type="button"
+                          onClick={() => { setSelectedArtifactForModal(null); setShowArtifactModal(true); }}
+                          className="w-4 h-4 rounded-full bg-amber-400 text-black flex items-center justify-center text-[10px] font-bold hover:scale-110 transition-transform ml-1"
+                          title="View all artifact token rules"
+                      >
+                          i
+                      </button>
+                  </div>
+
+                  <div className="flex flex-wrap justify-center gap-3 w-full">
+                      {playersWithArtifact.map(p => {
+                          const isOwner = p.id === me.id;
+                          const artId = p.artifact as ArtifactID;
+                          const meta = ARTIFACT_METADATA[artId];
+
+                          return (
+                              <div
+                                  key={p.id}
+                                  className={`
+                                      relative p-3 rounded-xl border flex items-center gap-3 backdrop-blur-md transition-all
+                                      ${isOwner 
+                                          ? 'bg-amber-950/60 border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/40' 
+                                          : 'bg-[#130e26]/80 border-amber-500/30 shadow-[0_0_10px_rgba(0,0,0,0.5)]'}
+                                  `}
+                              >
+                                  <div className="relative">
+                                      <div className="w-10 h-10 rounded-full bg-amber-900/40 border border-amber-400/50 flex items-center justify-center font-bold text-amber-200 text-sm overflow-hidden">
+                                          {p.icon && p.icon.includes('/') ? (
+                                              <img src={p.icon} alt={p.name} className="w-full h-full object-cover" />
+                                          ) : (
+                                              <span>{p.icon || p.name.charAt(0).toUpperCase()}</span>
+                                          )}
+                                      </div>
+                                      <span className="absolute -bottom-1 -right-1 text-sm drop-shadow">🏺</span>
+                                  </div>
+
+                                  <div className="flex flex-col">
+                                      <div className="flex items-center gap-2">
+                                          <span className="text-white font-bold text-sm">
+                                              {p.name} {isOwner && <span className="text-amber-300 text-xs font-semibold">(You)</span>}
+                                          </span>
+                                      </div>
+
+                                      {isOwner ? (
+                                          <div className="flex items-center gap-1.5 mt-0.5">
+                                              <span className="text-sm">{meta?.icon}</span>
+                                              <span className="text-xs font-bold text-amber-200">
+                                                  {meta?.name}
+                                              </span>
+                                              <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                      setSelectedArtifactForModal(artId);
+                                                      setShowArtifactModal(true);
+                                                  }}
+                                                  className="w-3.5 h-3.5 rounded-full bg-amber-400 text-black flex items-center justify-center text-[9px] font-bold hover:scale-110 ml-0.5"
+                                                  title="View Token Details"
+                                              >
+                                                  i
+                                              </button>
+                                          </div>
+                                      ) : (
+                                          <span className="text-xs text-amber-200/60 font-mono mt-0.5">
+                                              Mystery Artifact Attached
+                                          </span>
+                                      )}
+                                  </div>
+                              </div>
+                          );
+                      })}
                   </div>
               </div>
           )}
@@ -194,6 +329,13 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
           </div>
 
           <SeatingButton players={Object.values(game.players) as Player[]} />
+
+          {showArtifactModal && (
+              <ArtifactsInfoModal
+                  selectedArtifact={selectedArtifactForModal}
+                  onClose={() => { setShowArtifactModal(false); setSelectedArtifactForModal(null); }}
+              />
+          )}
       </div>
   );
 };

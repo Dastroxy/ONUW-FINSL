@@ -6,9 +6,10 @@ import RoleIcon from './RoleIcons';
 
 interface Props {
   roles: RoleID[];
+  className?: string;
 }
 
-const RolesInfoButton: React.FC<Props> = ({ roles }) => {
+const RolesInfoButton: React.FC<Props> = ({ roles, className }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -16,8 +17,9 @@ const RolesInfoButton: React.FC<Props> = ({ roles }) => {
       {/* Floating Action Button */}
       <button 
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-primary/85 border-2 border-white/30 backdrop-blur-md transform-gpu text-white font-black text-lg shadow-[0_4px_20px_rgba(18,184,134,0.5)] transition-all hover:scale-110 hover:shadow-[0_6px_30px_rgba(18,184,134,0.7)] flex items-center justify-center"
+        className={className || "fixed bottom-24 right-4 sm:bottom-24 sm:right-6 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#0d1222]/90 border border-primary/40 backdrop-blur-md transform-gpu text-white font-black text-base shadow-[0_4px_20px_rgba(0,0,0,0.6)] transition-all hover:bg-primary/20 hover:scale-105 active:scale-95 flex items-center justify-center"}
         aria-label="Show Roles Info"
+        title="View Roles Info"
       >
         i
       </button>

@@ -3,6 +3,7 @@ import { db } from '../config/firebase';
 import { collection, doc, setDoc, updateDoc, getDoc, onSnapshot, arrayUnion, addDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { GameState, GamePhase, RoleID, Player, CenterCard, NightActionPayload, Team } from '../types';
 import { ROLE_METADATA, NIGHT_SEQUENCE } from '../constants';
+import { ArtifactID, ARTIFACT_METADATA, DEFAULT_CURATOR_ARTIFACTS } from '../constants/artifacts';
 
 const GAMES_COLLECTION = 'games';
 
@@ -176,6 +177,26 @@ export const updateRoles = async (gameId: string, roles: RoleID[]) => {
   await updateDoc(gameRef, { selectedRoles: roles });
 };
 
+export const updateCuratorArtifacts = async (gameId: string, artifacts: string[]) => {
+  const gameRef = doc(db, GAMES_COLLECTION, gameId);
+  await updateDoc(gameRef, { curatorArtifacts: artifacts });
+};
+
+export const applyArtifactRoleChanges = (game: GameState, updates: any) => {
+  Object.values(game.players).forEach((p: Player) => {
+    const artifact = updates[`players.${p.id}.artifact`] !== undefined 
+      ? updates[`players.${p.id}.artifact`] 
+      : p.artifact;
+    if (artifact && ARTIFACT_METADATA[artifact as ArtifactID]) {
+      const meta = ARTIFACT_METADATA[artifact as ArtifactID];
+      if (meta.isRoleChanging && meta.associatedRole) {
+        updates[`players.${p.id}.currentRole`] = meta.associatedRole;
+        updates[`players.${p.id}.marks`] = []; // Overwrite cards and marks
+      }
+    }
+  });
+};
+
 export const startGameSetup = async (gameId: string) => {
   const gameRef = doc(db, GAMES_COLLECTION, gameId);
   const snap = await getDoc(gameRef);
@@ -204,6 +225,12 @@ export const startGameSetup = async (gameId: string) => {
     thingTarget: null,
     nightActors: []
   };
+
+  if (game.selectedRoles.includes(RoleID.CURATOR)) {
+    updates.curatorArtifacts = (game.curatorArtifacts && game.curatorArtifacts.length > 0)
+      ? game.curatorArtifacts
+      : DEFAULT_CURATOR_ARTIFACTS;
+  }
 
   playerIds.forEach((pid, index) => {
     const role = shuffledRoles[index];
@@ -344,6 +371,7 @@ export const toggleMasonReady = async (gameId: string, playerId: string) => {
             updates.phase = GamePhase.DISCUSSION;
             updates.timerEnd = Date.now() + 5 * 60 * 1000;
             updates.discussionReadyPlayers = [];
+            applyArtifactRoleChanges(game, updates);
         }
         await updateDoc(gameRef2, updates);
     }
@@ -630,15 +658,29 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
       logs.push(`${actor.name} (Thing) tapped ${game.players[payload.targetPlayerId].name} 👻`);
   }
 
+  // CURATOR ARTIFACT PLACEMENT
+  const isCurator = actor.originalRole === RoleID.CURATOR || 
+    (actor.originalRole === RoleID.COPYCAT && actor.currentRole === RoleID.CURATOR) || 
+    (actor.originalRole === RoleID.DOPPELGANGER && (actor as any).copiedRole === RoleID.CURATOR);
+
+  if (isCurator && (payload.actionType === 'PLACE_TOKEN' || payload.actionType === 'MARK') && payload.targetPlayerId) {
+      if (game.players[payload.targetPlayerId].shielded) {
+          logs.push(`${actor.name} (Curator) tried to place an Artifact Token, but ${game.players[payload.targetPlayerId].name} was shielded 🛡️`);
+      } else {
+          const chosenArtifact = payload.artifactToken || ArtifactID.VOID_OF_NOTHINGNESS;
+          updates[`players.${payload.targetPlayerId}.artifact`] = chosenArtifact;
+          logs.push(`${actor.name} (Curator) placed an Artifact Token on ${game.players[payload.targetPlayerId].name} 🏺`);
+      }
+  }
+
   // MARK PLACEMENT
-  if (payload.actionType === 'MARK' && payload.targetPlayerId) {
+  if (payload.actionType === 'MARK' && payload.targetPlayerId && !isCurator) {
       if (game.players[payload.targetPlayerId].shielded) {
           logs.push(`${actor.name} (${roleName}) tried to mark but target was shielded 🛡️`);
       } else {
           let markEmoji = '❌';
           if (actor.originalRole === RoleID.VAMPIRE) markEmoji = '🧛';
           if (actor.originalRole === RoleID.ASSASSIN) markEmoji = '🗡️';
-          if (actor.originalRole === RoleID.CURATOR) markEmoji = '🏺';
           
           logs.push(`${actor.name} (${roleName}) marked ${game.players[payload.targetPlayerId].name} ${markEmoji}`);
           await updateDoc(gameRef, {
@@ -688,7 +730,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
       }
   }
 
-  const TRACKED_ACTION_TYPES = new Set(['VIEW', 'SWAP', 'COPY', 'REVEAL', 'TAP', 'ROTATE']);
+  const TRACKED_ACTION_TYPES = new Set(['VIEW', 'SWAP', 'COPY', 'REVEAL', 'TAP', 'ROTATE', 'PLACE_TOKEN']);
   const PASSIVE_OBSERVER_ROLES = new Set([
       RoleID.INSOMNIAC, RoleID.SQUIRE, RoleID.BEHOLDER, RoleID.MINION,
       RoleID.MASON, RoleID.MASON_2, RoleID.DREAM_WOLF, RoleID.APPRENTICE_TANNER,
@@ -740,6 +782,7 @@ export const advanceNightTurn = async (gameId: string) => {
       updates.phase = GamePhase.DISCUSSION;
       updates.timerEnd = Date.now() + 5 * 60 * 1000; // 5 mins
       updates.discussionReadyPlayers = [];
+      applyArtifactRoleChanges(game, updates);
     }
     await updateDoc(gameRef, updates);
 };
@@ -1046,6 +1089,18 @@ export const finalizeGame = async (gameId: string) => {
         const lynchNames = lynchVictims.map(id => game.players[id].name).join(", ");
         const deathMsg = lynchNames ? `${lynchNames} died` : "No one died";
         winnerDescription += ` (Prince immune → ${deathMsg})`;
+   }
+
+   // TRAITOR ARTIFACT WIN CHECK (Dagger of the Traitor)
+   const traitorPlayer = players.find(p => p.artifact === ArtifactID.DAGGER_OF_THE_TRAITOR);
+   if (traitorPlayer) {
+       const initialTeam = ROLE_METADATA[traitorPlayer.originalRole]?.team;
+       const teamMateDied = players.some(p => p.id !== traitorPlayer.id && ROLE_METADATA[p.originalRole]?.team === initialTeam && eliminatedIds.includes(p.id));
+       if (teamMateDied) {
+           winnerDescription += ` | ${traitorPlayer.name} (Traitor) wins! 🩸`;
+       } else {
+           winnerDescription += ` | ${traitorPlayer.name} (Traitor) loses 🩸`;
+       }
    }
    
    const finalUpdates: any = {

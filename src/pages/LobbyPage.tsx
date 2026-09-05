@@ -1,13 +1,15 @@
 
 import React, { useState } from 'react';
 import { GameState, Player, RoleID, GamePhase } from '../types';
-import { claimSeat, toggleRoleSelection, startGameSetup, toggleDealReady, advanceToRoles, advanceToSeating } from '../services/firestoreService';
+import { claimSeat, toggleRoleSelection, startGameSetup, toggleDealReady, advanceToRoles, advanceToSeating, updateCuratorArtifacts } from '../services/firestoreService';
 import GameBoard from '../components/GameBoard';
 import RoleCard from '../components/RoleCard';
 import RoleIcon from '../components/RoleIcons';
 import RolesInfoButton from '../components/RolesInfoButton';
 import SeatingButton from '../components/SeatingButton';
 import { ROLE_METADATA } from '../constants';
+import { ARTIFACT_METADATA, ArtifactID, DEFAULT_CURATOR_ARTIFACTS, ALL_ARTIFACT_IDS } from '../constants/artifacts';
+import ArtifactsInfoModal from '../components/ArtifactsInfoModal';
 
 interface Props {
   game: GameState;
@@ -16,6 +18,8 @@ interface Props {
 
 const LobbyPage: React.FC<Props> = ({ game, me }) => {
   const [cardFlipped, setCardFlipped] = useState(false);
+  const [selectedArtifactInfo, setSelectedArtifactInfo] = useState<string | null>(null);
+  const [showArtifactModal, setShowArtifactModal] = useState(false);
   
   const selectedRoles = game.selectedRoles || [];
   
@@ -204,7 +208,7 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
              </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto p-4 pb-32">
+          <div className="flex-1 overflow-y-auto px-4 pt-3 pb-36 sm:pb-40">
              {expansions.map(exp => {
                  const expRoles = Object.keys(ROLE_METADATA)
                     .filter(key => ROLE_METADATA[key as RoleID].expansion === exp)
@@ -213,13 +217,13 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
                  if (expRoles.length === 0) return null;
 
                  return (
-                     <div key={exp} className="mb-10 animate-fade-in">
-                         <h3 className="text-base sm:text-lg sm:text-xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-moon mb-6 px-2 uppercase tracking-widest flex items-center gap-2 sm:gap-3">
-                             <span className="w-10 h-[2px] bg-gradient-to-r from-primary to-moon/40 rounded-full"></span>
+                     <div key={exp} className="mb-7 sm:mb-8 animate-fade-in">
+                         <h3 className="text-sm sm:text-base md:text-lg font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-moon mb-3 sm:mb-4 px-1 uppercase tracking-widest flex items-center gap-2 sm:gap-3">
+                             <span className="w-8 sm:w-10 h-[2px] bg-gradient-to-r from-primary to-moon/40 rounded-full"></span>
                              {exp}
                              <span className="flex-1 h-[1px] bg-gradient-to-r from-moon/15 to-transparent rounded-full"></span>
                          </h3>
-                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4">
+                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3.5">
                              {expRoles.map(r => {
                                  const meta = ROLE_METADATA[r];
                                  const isSelected = selectedRoles.includes(r);
@@ -228,24 +232,24 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
                                          key={r}
                                          onClick={() => toggleRole(r)}
                                          className={`
-                                             relative h-24 sm:h-32 rounded-xl border transition-all duration-300 cursor-pointer overflow-hidden flex flex-col group
+                                             relative min-h-[108px] sm:min-h-[128px] rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden flex flex-col group
                                              backdrop-blur-sm transform-gpu
                                              ${isSelected 
-                                                 ? 'border-moon/40 bg-primary/20 shadow-[0_0_25px_rgba(18,184,134,0.3),_0_0_50px_rgba(220,245,235,0.08)] scale-105 z-10 ring-2 ring-primary/40' 
-                                                 : 'border-white/8 bg-white/[0.03] hover:bg-primary/10 hover:border-primary/40 hover:shadow-[0_10px_30px_rgba(18,184,134,0.15)] hover:-translate-y-1'}
+                                                 ? 'border-primary/60 bg-primary/20 shadow-[0_0_20px_rgba(18,184,134,0.3)] ring-2 ring-primary/50' 
+                                                 : 'border-white/8 bg-white/[0.03] hover:bg-primary/10 hover:border-primary/40 hover:shadow-[0_4px_20px_rgba(18,184,134,0.15)]'}
                                          `}
                                      >
                                          <div className={`h-1.5 w-full ${meta.team === 'GOOD' ? 'bg-good shadow-[0_0_12px_rgba(126,184,201,0.5)]' : meta.team === 'EVIL' ? 'bg-evil shadow-[0_0_12px_rgba(185,28,28,0.5)]' : 'bg-independent shadow-[0_0_12px_rgba(212,168,71,0.5)]'}`}></div>
                                          <div className="flex-1 flex flex-col items-center justify-center p-2 text-center relative z-10">
-                                             <div className={`mb-2 transition-all duration-300 ${isSelected ? 'scale-110 drop-shadow-[0_0_12px_rgba(220,245,235,0.5)]' : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'} grayscale-[0.3] group-hover:grayscale-0`}>
-                                                 <RoleIcon role={r} className="w-8 h-8 sm:w-12 sm:h-12" />
+                                             <div className={`mb-1.5 transition-all duration-300 ${isSelected ? 'scale-105 drop-shadow-[0_0_10px_rgba(220,245,235,0.5)]' : 'group-hover:scale-105 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'} grayscale-[0.2] group-hover:grayscale-0`}>
+                                                 <RoleIcon role={r} className="w-9 h-9 sm:w-12 sm:h-12" />
                                              </div>
-                                             <span className={`text-xs font-bold leading-tight uppercase tracking-wide transition-colors ${isSelected ? 'text-moon' : 'text-moon/40 group-hover:text-moon/90'}`}>
+                                             <span className={`text-[11px] sm:text-xs font-bold leading-tight uppercase tracking-wide transition-colors line-clamp-1 ${isSelected ? 'text-moon' : 'text-moon/50 group-hover:text-moon/90'}`}>
                                                  {meta.name}
                                              </span>
                                          </div>
                                          <div className={`
-                                            absolute top-2 right-2 w-5 h-5 bg-primary rounded-full shadow-[0_0_10px_rgba(18,184,134,0.5)] flex items-center justify-center text-[10px] text-white transition-all duration-300
+                                            absolute top-1.5 right-1.5 w-4.5 h-4.5 sm:w-5 sm:h-5 bg-primary rounded-full shadow-[0_0_10px_rgba(18,184,134,0.5)] flex items-center justify-center text-[10px] text-white transition-all duration-200
                                             ${isSelected ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}
                                          `}>
                                              ✓
@@ -258,19 +262,141 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
                      </div>
                  );
              })}
+
+             {/* CURATOR ARTIFACT TOKENS SELECTION (Inside scroll container) */}
+             {selectedRoles.includes(RoleID.CURATOR) && (
+               <div className="mt-4 mb-8 p-3.5 sm:p-5 rounded-2xl bg-amber-950/20 border border-amber-500/25 shadow-[0_0_25px_rgba(245,158,11,0.12)] backdrop-blur-md animate-fade-in">
+                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+                   <div className="flex items-center gap-2">
+                     <span className="text-2xl">🏺</span>
+                     <div>
+                       <h3 className="text-sm sm:text-base font-display font-bold text-amber-200">
+                         Curator Artifact Tokens
+                       </h3>
+                       <p className="text-xs text-amber-200/60">
+                         {isHost 
+                           ? `Select tokens for the Curator to choose from (${(game.curatorArtifacts || DEFAULT_CURATOR_ARTIFACTS).length} selected)` 
+                           : `Host selected ${(game.curatorArtifacts || DEFAULT_CURATOR_ARTIFACTS).length} artifact tokens`}
+                       </p>
+                     </div>
+                   </div>
+                   <div className="flex items-center gap-2 flex-wrap">
+                     {isHost && (
+                       <>
+                         <button
+                           type="button"
+                           onClick={() => updateCuratorArtifacts(game.id, DEFAULT_CURATOR_ARTIFACTS)}
+                           className="px-2.5 py-1 text-xs rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition-all font-semibold"
+                         >
+                           Daybreak (5)
+                         </button>
+                         <button
+                           type="button"
+                           onClick={() => updateCuratorArtifacts(game.id, ALL_ARTIFACT_IDS)}
+                           className="px-2.5 py-1 text-xs rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition-all font-semibold"
+                         >
+                           All (10)
+                         </button>
+                       </>
+                     )}
+                     <button
+                       type="button"
+                       onClick={() => { setSelectedArtifactInfo(null); setShowArtifactModal(true); }}
+                       className="px-2.5 py-1 text-xs rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all font-semibold flex items-center gap-1.5"
+                     >
+                       <span>Token Info</span>
+                       <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold">i</span>
+                     </button>
+                   </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+                   {ALL_ARTIFACT_IDS.map((artId) => {
+                     const meta = ARTIFACT_METADATA[artId];
+                     const currentSelected = game.curatorArtifacts && game.curatorArtifacts.length > 0 
+                       ? game.curatorArtifacts 
+                       : DEFAULT_CURATOR_ARTIFACTS;
+                     const isSelected = currentSelected.includes(artId);
+
+                     return (
+                       <div
+                         key={artId}
+                         onClick={async () => {
+                           if (!isHost) return;
+                           let next: string[];
+                           if (isSelected) {
+                             if (currentSelected.length <= 1) return;
+                             next = currentSelected.filter(id => id !== artId);
+                           } else {
+                             next = [...currentSelected, artId];
+                           }
+                           await updateCuratorArtifacts(game.id, next);
+                         }}
+                         className={`
+                           relative p-2.5 sm:p-3 rounded-xl border transition-all duration-200 flex flex-col items-center text-center
+                           ${isHost ? 'cursor-pointer hover:border-amber-400/80 hover:scale-[1.02]' : 'cursor-default'}
+                           ${isSelected
+                             ? 'bg-amber-900/30 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/50'
+                             : 'bg-black/40 border-white/10 opacity-50 hover:opacity-75'}
+                         `}
+                       >
+                         <div className="flex items-center justify-between w-full mb-1">
+                           <span className="text-[10px] uppercase font-bold text-amber-300/70">
+                             {meta.expansion}
+                           </span>
+                           <button
+                             type="button"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setSelectedArtifactInfo(artId);
+                               setShowArtifactModal(true);
+                             }}
+                             className="w-4 h-4 rounded-full bg-white/15 hover:bg-amber-400 hover:text-black text-white/80 flex items-center justify-center text-[10px] font-bold transition-all"
+                             title="View Token Info"
+                           >
+                             i
+                           </button>
+                         </div>
+                         <div className="text-2xl sm:text-3xl my-1 drop-shadow-md">
+                           {meta.icon}
+                         </div>
+                         <span className="text-xs font-bold text-moon line-clamp-1">
+                           {meta.name}
+                         </span>
+                         <span className="text-[10px] text-amber-200/70 mt-0.5 line-clamp-1 font-mono">
+                           {meta.category === 'ROLE_CHANGING' ? 'Role Shift' : meta.category === 'MUTING' ? 'Mute' : meta.category === 'TRAITOR' ? 'Traitor' : 'No Effect'}
+                         </span>
+                         {isSelected && (
+                           <div className="absolute top-1 right-1 w-3.5 h-3.5 bg-amber-400 rounded-full flex items-center justify-center text-[9px] text-black font-black shadow-sm">
+                             ✓
+                           </div>
+                         )}
+                       </div>
+                     );
+                   })}
+                 </div>
+               </div>
+             )}
           </div>
 
           <RolesInfoButton roles={selectedRoles} />
 
+          {showArtifactModal && (
+            <ArtifactsInfoModal 
+              selectedArtifact={selectedArtifactInfo}
+              onClose={() => { setShowArtifactModal(false); setSelectedArtifactInfo(null); }}
+            />
+          )}
+
           {isHost ? (
-             <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 z-40" style={{ background: 'linear-gradient(to top, #090614 0%, rgba(8, 11, 20, 0.95) 60%, transparent 100%)' }}>
+             <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 z-20" style={{ background: 'linear-gradient(to top, #090614 0%, rgba(9, 6, 20, 0.95) 75%, transparent 100%)' }}>
                <button 
                  disabled={selectedRoles.length !== requiredRolesCount}
                  onClick={async () => {
                     await startGameSetup(game.id);
                  }}
                  className={`
-                    w-full max-w-xs sm:max-w-md sm:max-w-md mx-auto block py-4 rounded-xl font-bold text-base sm:text-lg sm:text-xl shadow-lg transition-all transform
+                    w-full max-w-xs sm:max-w-md mx-auto block py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg transition-all transform
                     ${selectedRoles.length === requiredRolesCount
                         ? 'bg-gradient-to-tr from-accent to-evil border-2 border-accent/60 text-white shadow-[0_8px_30px_rgba(139,17,59,0.4),_0_0_50px_rgba(220,245,235,0.06)] hover:shadow-[0_8px_40px_rgba(139,17,59,0.6)] hover:brightness-110 hover:scale-[1.02] active:scale-95'
                         : 'bg-bark text-moon/30 cursor-not-allowed border border-forest'}
@@ -280,8 +406,8 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
                </button>
              </div>
           ) : (
-             <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 z-40 text-center" style={{ background: 'linear-gradient(to top, #090614 0%, rgba(8, 11, 20, 0.95) 60%, transparent 100%)' }}>
-                 <div className="text-primary font-bold animate-pulse mb-2" style={{ textShadow: '0 0 15px rgba(18, 184, 134, 0.3)' }}>HOST IS SELECTING ROLES</div>
+             <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 z-20 text-center" style={{ background: 'linear-gradient(to top, #090614 0%, rgba(9, 6, 20, 0.95) 75%, transparent 100%)' }}>
+                 <div className="text-primary font-bold animate-pulse mb-1" style={{ textShadow: '0 0 15px rgba(18, 184, 134, 0.3)' }}>HOST IS SELECTING ROLES</div>
                  <p className="text-moon/30 text-xs">Sit tight, the game will start soon.</p>
              </div>
           )}

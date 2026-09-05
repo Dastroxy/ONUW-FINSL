@@ -127,6 +127,7 @@ export interface GameState {
   nostradamusAnnouncement?: string | null; // Public announcement for discussion phase
   thingTarget?: string | null; // ID of player tapped by Thing
   nightActors?: string[]; // IDs of players who moved or viewed cards (for Aura Seer)
+  curatorArtifacts?: string[]; // Tokens selected for the Curator pool
 }
 
 export interface NightActionPayload {
@@ -138,4 +139,5 @@ export interface NightActionPayload {
   thirdTargetPlayerId?: string; // For Nostradamus > 6 players
   actionType: 'VIEW' | 'SWAP' | 'COPY' | 'MARK' | 'PLACE_TOKEN' | 'REVEAL' | 'TAP' | 'ROTATE';
   direction?: 'CLOCKWISE' | 'ANTI-CLOCKWISE';
+  artifactToken?: string; // Artifact placed by Curator
 }
