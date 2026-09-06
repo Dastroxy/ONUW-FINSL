@@ -302,14 +302,14 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
       if (currentRoleID === RoleID.WEREWOLF && me.originalRole === RoleID.WEREWOLF_2) return true;
       if (currentRoleID === RoleID.MASON && me.originalRole === RoleID.MASON_2) return true;
       
-      const copiedRole = (me as any).copiedRole || me.currentRole;
+      const copiedRole = me.copiedRole;
       
-      if (me.originalRole === RoleID.COPYCAT && me.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(copiedRole)) {
+      if (me.originalRole === RoleID.COPYCAT && copiedRole && COPYCAT_DEFERRED_ROLES.has(copiedRole)) {
           if (copiedRole === currentRoleID) return true;
           if (currentRoleID === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
           if (currentRoleID === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
       }
-      if (me.originalRole === RoleID.DOPPELGANGER && me.currentRole !== RoleID.DOPPELGANGER && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole)) {
+      if (me.originalRole === RoleID.DOPPELGANGER && copiedRole && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole)) {
           if (copiedRole === currentRoleID) return true;
           if (currentRoleID === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
           if (currentRoleID === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
@@ -427,16 +427,31 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   // Stably sorted players list by seating/join order
   const allPlayers = sortPlayersStably(Object.values(game.players) as Player[]);
 
-  const otherEvilPlayers = allPlayers.filter(p => 
-      p.id !== me.id && 
-      (ROLE_METADATA[p.currentRole].team === Team.EVIL || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && ROLE_METADATA[p.currentRole].team === Team.EVIL)) &&
-      (activeRoleID === RoleID.MINION || p.currentRole !== RoleID.MINION)
-  );
+  // Helper to determine role identity during the night phase
+  const getNightRole = (p: Player): RoleID => {
+      if (p.originalRole === RoleID.DOPPELGANGER || p.originalRole === RoleID.COPYCAT) {
+          return p.copiedRole || p.originalRole;
+      }
+      return p.originalRole;
+  };
 
-  const otherMasons = allPlayers.filter(p => 
-      p.id !== me.id && 
-      (p.originalRole === RoleID.MASON || p.originalRole === RoleID.MASON_2 || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && (p.currentRole === RoleID.MASON || p.currentRole === RoleID.MASON_2)))
-  );
+  const otherEvilPlayers = allPlayers.filter(p => {
+      if (p.id === me.id) return false;
+      const pNightRole = getNightRole(p);
+      if (activeRoleID === RoleID.WEREWOLF) {
+          return pNightRole === RoleID.WEREWOLF || pNightRole === RoleID.WEREWOLF_2;
+      }
+      if (activeRoleID === RoleID.MINION) {
+          return ROLE_METADATA[pNightRole]?.team === Team.EVIL && pNightRole !== RoleID.MINION;
+      }
+      return ROLE_METADATA[pNightRole]?.team === Team.EVIL;
+  });
+
+  const otherMasons = allPlayers.filter(p => {
+      if (p.id === me.id) return false;
+      const pNightRole = getNightRole(p);
+      return pNightRole === RoleID.MASON || pNightRole === RoleID.MASON_2;
+  });
 
   switch (activeRoleID) {
     case RoleID.SEER: maxPlayers = 1; maxCenter = 2; actionBtnText = "REVEAL"; break;
@@ -502,13 +517,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
   const isSquire = activeRoleID === RoleID.SQUIRE;
   const squireEvilPlayers = isSquire 
-    ? allPlayers.filter(p => 
-        p.id !== me.id && 
-        (ROLE_METADATA[p.originalRole].team === Team.EVIL || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && ROLE_METADATA[p.currentRole].team === Team.EVIL)) &&
-        p.originalRole !== RoleID.SQUIRE && 
-        p.originalRole !== RoleID.MINION &&
-        !((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && (p.currentRole === RoleID.MINION || p.currentRole === RoleID.SQUIRE))
-      )
+    ? allPlayers.filter(p => {
+        if (p.id === me.id) return false;
+        const pNightRole = getNightRole(p);
+        return ROLE_METADATA[pNightRole]?.team === Team.EVIL &&
+          pNightRole !== RoleID.SQUIRE && 
+          pNightRole !== RoleID.MINION;
+      })
     : [];
 
   const isBeholder = activeRoleID === RoleID.BEHOLDER;
@@ -1096,6 +1111,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   }
               }, 1200);
               return;
+          } else if (p && !p.shielded) {
+              const normalizedRole = p.currentRole === RoleID.WEREWOLF_2 ? RoleID.WEREWOLF : p.currentRole === RoleID.MASON_2 ? RoleID.MASON : p.currentRole;
+              if (DOPPELGANGER_DEFERRED_ROLES.has(normalizedRole)) {
+                  setInfoMessage(`You copied ${ROLE_METADATA[normalizedRole]?.name || 'a role'}! You will wake up during their night phase.`);
+              } else {
+                  setInfoMessage(`You copied ${ROLE_METADATA[normalizedRole]?.name || 'a role'}. You have no night action.`);
+              }
           }
       }
 
@@ -1313,8 +1335,8 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   let beholderUI = null;
   if (isBeholder) {
       headerTitle = "BEHOLDER INFO"; headerDesc = "Review Seer locations";
-      const seer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.SEER));
-      const appSeer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.APPRENTICE_SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.APPRENTICE_SEER));
+      const seer = (Object.values(game.players) as Player[]).find(p => getNightRole(p) === RoleID.SEER);
+      const appSeer = (Object.values(game.players) as Player[]).find(p => getNightRole(p) === RoleID.APPRENTICE_SEER);
       beholderUI = (
           <div className="w-full max-w-md mt-6 space-y-4 animate-fade-in">
              <div className="bg-gray-800/60 p-4 rounded-xl border border-good/30 flex items-center justify-between shadow-lg">
@@ -1367,7 +1389,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   // APPRENTICE TANNER HEADER
   if (activeRoleID === RoleID.APPRENTICE_TANNER) {
       headerTitle = "APPRENTICE TANNER 🎭";
-      const tannerPlayer = allPlayers.find(p => p.originalRole === RoleID.TANNER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.TANNER));
+      const tannerPlayer = allPlayers.find(p => getNightRole(p) === RoleID.TANNER);
       if (tannerPlayer) {
           headerDesc = `The Tanner is: ${tannerPlayer.name}`;
       } else {

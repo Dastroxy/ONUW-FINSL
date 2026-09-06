@@ -18,7 +18,8 @@ export const DOPPELGANGER_IMMEDIATE_ROLES = new Set<RoleID>([
   RoleID.SENTINEL, RoleID.ALPHA_WOLF, RoleID.MYSTIC_WOLF, RoleID.APPRENTICE_SEER,
   RoleID.PARANORMAL_INVESTIGATOR, RoleID.WITCH, RoleID.VILLAGE_IDIOT,
   RoleID.DISEASED, RoleID.CUPID, RoleID.INSTIGATOR, RoleID.THING,
-  RoleID.CURATOR, RoleID.NOSTRADAMUS, RoleID.REVEALER
+  RoleID.CURATOR, RoleID.NOSTRADAMUS, RoleID.REVEALER,
+  RoleID.GREMLIN, RoleID.EXPOSER
 ]);
 
 export const DOPPELGANGER_DEFERRED_ROLES = new Set<RoleID>([
@@ -26,9 +27,9 @@ export const DOPPELGANGER_DEFERRED_ROLES = new Set<RoleID>([
   RoleID.MINION, RoleID.INSOMNIAC,
   RoleID.VAMPIRE, RoleID.THE_COUNT, RoleID.RENFIELD, RoleID.PRIEST,
   RoleID.ASSASSIN, RoleID.APPRENTICE_ASSASSIN, RoleID.MARKSMAN,
-  RoleID.PICKPOCKET, RoleID.GREMLIN, RoleID.PSYCHIC, RoleID.EXPOSER,
+  RoleID.PICKPOCKET, RoleID.PSYCHIC,
   RoleID.MORTICIAN, RoleID.AURA_SEER, RoleID.APPRENTICE_TANNER,
-  RoleID.SQUIRE, RoleID.BEHOLDER
+  RoleID.SQUIRE, RoleID.BEHOLDER, RoleID.DREAM_WOLF
 ]);
 
 const generateRoomCode = () => Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -239,6 +240,7 @@ export const startGameSetup = async (gameId: string) => {
     const role = shuffledRoles[index];
     updates[`players.${pid}.originalRole`] = role;
     updates[`players.${pid}.currentRole`] = role;
+    updates[`players.${pid}.copiedRole`] = null;
     updates[`players.${pid}.votedFor`] = null;
     updates[`players.${pid}.marks`] = ['MARK_OF_CLARITY']; // "all players automatically receive a Mark of Clarity"
     updates[`players.${pid}.shielded`] = false;
@@ -887,20 +889,18 @@ export const advanceNightTurn = async (gameId: string) => {
     const finishingRole = game.nightQueue[game.currentNightRoleIndex];
     if (finishingRole) {
         if (finishingRole === RoleID.WEREWOLF) {
-            const wolfPlayers = players.filter(p => 
-                p.originalRole === RoleID.WEREWOLF || 
-                p.originalRole === RoleID.WEREWOLF_2 || 
-                ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && (p.currentRole === RoleID.WEREWOLF || p.currentRole === RoleID.WEREWOLF_2))
-            );
+            const wolfPlayers = players.filter(p => {
+                const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                return pRole === RoleID.WEREWOLF || pRole === RoleID.WEREWOLF_2;
+            });
             if (wolfPlayers.length > 1 && !logs.some(l => l.includes('Werewolves recognized each other'))) {
                 addLog(`Werewolves recognized each other: ${wolfPlayers.map(w => w.name).join(' & ')} 🐺`);
             }
         } else if (finishingRole === RoleID.MASON) {
-            const masonPlayers = players.filter(p => 
-                p.originalRole === RoleID.MASON || 
-                p.originalRole === RoleID.MASON_2 || 
-                ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && (p.currentRole === RoleID.MASON || p.currentRole === RoleID.MASON_2))
-            );
+            const masonPlayers = players.filter(p => {
+                const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                return pRole === RoleID.MASON || pRole === RoleID.MASON_2;
+            });
             if (!logs.some(l => l.includes('Masons recognized each other') || l.includes('Lone Mason'))) {
                 if (masonPlayers.length > 1) {
                     addLog(`Masons recognized each other: ${masonPlayers.map(m => m.name).join(' & ')} 🧱`);
@@ -910,43 +910,75 @@ export const advanceNightTurn = async (gameId: string) => {
             }
         } else if (finishingRole === RoleID.MINION) {
             if (!logs.some(l => l.includes('(Minion) saw evil players'))) {
-                const minionPlayer = players.find(p => p.originalRole === RoleID.MINION || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.MINION));
+                const minionPlayer = players.find(p => {
+                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                    return pRole === RoleID.MINION;
+                });
                 if (minionPlayer) {
-                    const evilAllies = players.filter(p => p.id !== minionPlayer.id && (ROLE_METADATA[p.currentRole]?.team === Team.EVIL || ROLE_METADATA[p.originalRole]?.team === Team.EVIL));
+                    const evilAllies = players.filter(p => {
+                        if (p.id === minionPlayer.id) return false;
+                        const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                        return ROLE_METADATA[pRole]?.team === Team.EVIL && pRole !== RoleID.MINION;
+                    });
                     const evilNames = evilAllies.length > 0 ? evilAllies.map(p => `${p.name} (${ROLE_METADATA[p.currentRole].name} ${ROLE_METADATA[p.currentRole].icon})`).join(', ') : 'None in play';
                     addLog(`${minionPlayer.name} (Minion) saw evil players: ${evilNames} 👹`);
                 }
             }
         } else if (finishingRole === RoleID.SQUIRE) {
             if (!logs.some(l => l.includes('(Squire) checked the Evil team:'))) {
-                const squirePlayer = players.find(p => p.originalRole === RoleID.SQUIRE || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.SQUIRE));
+                const squirePlayer = players.find(p => {
+                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                    return pRole === RoleID.SQUIRE;
+                });
                 if (squirePlayer) {
-                    const evilPlayers = players.filter(p => p.id !== squirePlayer.id && ROLE_METADATA[p.originalRole]?.team === Team.EVIL && p.originalRole !== RoleID.SQUIRE && p.originalRole !== RoleID.MINION);
+                    const evilPlayers = players.filter(p => {
+                        if (p.id === squirePlayer.id) return false;
+                        const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                        return ROLE_METADATA[pRole]?.team === Team.EVIL && pRole !== RoleID.SQUIRE && pRole !== RoleID.MINION;
+                    });
                     const evilNames = evilPlayers.length > 0 ? evilPlayers.map(p => `${p.name} (${ROLE_METADATA[p.currentRole].name} ${ROLE_METADATA[p.currentRole].icon})`).join(', ') : 'None detected';
                     addLog(`${squirePlayer.name} (Squire) checked the Evil team: ${evilNames} ⚔️`);
                 }
             }
         } else if (finishingRole === RoleID.BEHOLDER) {
             if (!logs.some(l => l.includes('(Beholder) saw Seers:'))) {
-                const beholderPlayer = players.find(p => p.originalRole === RoleID.BEHOLDER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.BEHOLDER));
+                const beholderPlayer = players.find(p => {
+                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                    return pRole === RoleID.BEHOLDER;
+                });
                 if (beholderPlayer) {
-                    const seer = players.find(p => p.originalRole === RoleID.SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.SEER));
-                    const appSeer = players.find(p => p.originalRole === RoleID.APPRENTICE_SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.APPRENTICE_SEER));
+                    const seer = players.find(p => {
+                        const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                        return pRole === RoleID.SEER;
+                    });
+                    const appSeer = players.find(p => {
+                        const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                        return pRole === RoleID.APPRENTICE_SEER;
+                    });
                     const seen = [seer ? `${seer.name} (Seer 🔮)` : null, appSeer ? `${appSeer.name} (Appr. Seer 🔭)` : null].filter(Boolean).join(', ');
                     addLog(`${beholderPlayer.name} (Beholder) saw Seers: ${seen || 'None in play'} 👁️`);
                 }
             }
         } else if (finishingRole === RoleID.APPRENTICE_TANNER) {
             if (!logs.some(l => l.includes('(Apprentice Tanner) checked Tanner:'))) {
-                const appTanner = players.find(p => p.originalRole === RoleID.APPRENTICE_TANNER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.APPRENTICE_TANNER));
+                const appTanner = players.find(p => {
+                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                    return pRole === RoleID.APPRENTICE_TANNER;
+                });
                 if (appTanner) {
-                    const tanner = players.find(p => p.originalRole === RoleID.TANNER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.TANNER));
+                    const tanner = players.find(p => {
+                        const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                        return pRole === RoleID.TANNER;
+                    });
                     addLog(`${appTanner.name} (Apprentice Tanner) checked Tanner: ${tanner ? `${tanner.name} 🎭` : 'Not in play'}`);
                 }
             }
         } else if (finishingRole === RoleID.AURA_SEER) {
             if (!logs.some(l => l.includes('(Aura Seer) detected cards moved/viewed by:'))) {
-                const auraSeer = players.find(p => p.originalRole === RoleID.AURA_SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.AURA_SEER));
+                const auraSeer = players.find(p => {
+                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                    return pRole === RoleID.AURA_SEER;
+                });
                 if (auraSeer) {
                     const actorIds = (game.nightActors || []).filter(id => id !== auraSeer.id);
                     const actorNames = actorIds.map(id => game.players[id]?.name).filter(Boolean);
@@ -965,15 +997,19 @@ export const advanceNightTurn = async (gameId: string) => {
             if (queueRole === RoleID.WEREWOLF && p.originalRole === RoleID.WEREWOLF_2) return true;
             if (queueRole === RoleID.MASON && p.originalRole === RoleID.MASON_2) return true;
             
-            const copiedRole = (p as any).copiedRole || p.currentRole;
+            const copiedRole = p.copiedRole;
             
-            if (p.originalRole === RoleID.COPYCAT && p.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(copiedRole) && copiedRole === queueRole) return true;
-            if (p.originalRole === RoleID.COPYCAT && p.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(copiedRole) && queueRole === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
-            if (p.originalRole === RoleID.COPYCAT && p.currentRole !== RoleID.COPYCAT && COPYCAT_DEFERRED_ROLES.has(copiedRole) && queueRole === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+            if (p.originalRole === RoleID.COPYCAT && copiedRole && COPYCAT_DEFERRED_ROLES.has(copiedRole)) {
+                if (copiedRole === queueRole) return true;
+                if (queueRole === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
+                if (queueRole === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+            }
             
-            if (p.originalRole === RoleID.DOPPELGANGER && p.currentRole !== RoleID.DOPPELGANGER && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole) && copiedRole === queueRole) return true;
-            if (p.originalRole === RoleID.DOPPELGANGER && p.currentRole !== RoleID.DOPPELGANGER && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole) && queueRole === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
-            if (p.originalRole === RoleID.DOPPELGANGER && p.currentRole !== RoleID.DOPPELGANGER && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole) && queueRole === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+            if (p.originalRole === RoleID.DOPPELGANGER && copiedRole && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole)) {
+                if (copiedRole === queueRole) return true;
+                if (queueRole === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
+                if (queueRole === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+            }
             
             return false;
         });
@@ -1358,6 +1394,7 @@ export const resetGame = async (gameId: string) => {
             ...players[pid],
             originalRole: RoleID.VILLAGER,
             currentRole: RoleID.VILLAGER,
+            copiedRole: null,
             votedFor: null,
             marks: [],
             shielded: false,

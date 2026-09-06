@@ -81,6 +81,7 @@ export interface Player {
   seatId: number | null;
   originalRole: RoleID;
   currentRole: RoleID;
+  copiedRole?: RoleID | null;
   marks: string[]; // e.g., "MARK_OF_VAMPIRE"
   artifact: string | null;
   shielded: boolean; // Sentinel shield
