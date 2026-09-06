@@ -325,46 +325,52 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                         </div>
                   </div>
 
-                  {/* Night Phase Log: Fluid readable layout, NO nested scroll trap */}
-                  <div className="w-full max-w-2xl rounded-2xl p-5 sm:p-6 backdrop-blur-md"
-                    style={{
-                      background: 'rgba(12, 8, 24, 0.75)',
-                      border: '1px solid rgba(220, 245, 235, 0.1)',
-                      boxShadow: '0 4px 30px rgba(0,0,0,0.5), 0 0 25px rgba(220,245,235,0.03), inset 0 1px 0 rgba(255,255,255,0.03)'
-                    }}
-                  >
-                      <div className="flex justify-between items-center mb-3">
-                          <h3 className="text-white/80 font-bold uppercase tracking-widest text-xs">
-                              Night Phase Log
-                          </h3>
-                          {game.logs.length > 0 && (
-                            <span className="text-[10px] text-white/50 font-mono">
-                              {game.logs.length} events
-                            </span>
-                          )}
+                  {/* Game Event Log: Fluid readable layout, NO nested scroll trap */}
+                  {(() => {
+                    const uniqueLogs = Array.from(new Set(game.logs || []));
+                    return (
+                      <div className="w-full max-w-2xl rounded-2xl p-5 sm:p-6 backdrop-blur-md"
+                        style={{
+                          background: 'rgba(12, 8, 24, 0.75)',
+                          border: '1px solid rgba(220, 245, 235, 0.1)',
+                          boxShadow: '0 4px 30px rgba(0,0,0,0.5), 0 0 25px rgba(220,245,235,0.03), inset 0 1px 0 rgba(255,255,255,0.03)'
+                        }}
+                      >
+                          <div className="flex justify-between items-center mb-3">
+                              <h3 className="text-white/80 font-bold uppercase tracking-widest text-xs">
+                                  Game Event Log
+                              </h3>
+                              {uniqueLogs.length > 0 && (
+                                <span className="text-[10px] text-white/50 font-mono">
+                                  {uniqueLogs.length} events
+                                </span>
+                              )}
+                          </div>
+                          <div className="space-y-1.5">
+                              {uniqueLogs.length > 0 ? (
+                                  (expandedLogs ? uniqueLogs : uniqueLogs.slice(0, 8)).map((log, i) => (
+                                      <div key={i} className="text-xs text-white/90 font-mono border-l-2 border-primary/40 pl-3 py-1.5 bg-white/[0.02] rounded-r flex items-start gap-2">
+                                          <span className="text-[10px] text-white/40 font-mono select-none shrink-0 w-4 text-right">{i + 1}.</span>
+                                          <span className="break-words">{log}</span>
+                                      </div>
+                                  ))
+                              ) : (
+                                  <div className="text-white/50 italic text-xs">No events recorded.</div>
+                              )}
+                              {uniqueLogs.length > 8 && (
+                                <div className="pt-2 text-center">
+                                  <button 
+                                    onClick={() => setExpandedLogs(!expandedLogs)}
+                                    className="text-xs text-primary font-bold hover:underline px-3 py-1 rounded bg-primary/10 border border-primary/20 transition-colors"
+                                  >
+                                    {expandedLogs ? 'Show Less Logs ▲' : `Show all ${uniqueLogs.length} logs ▼`}
+                                  </button>
+                                </div>
+                              )}
+                          </div>
                       </div>
-                      <div className="space-y-1.5">
-                          {game.logs.length > 0 ? (
-                              (expandedLogs ? game.logs : game.logs.slice(0, 8)).map((log, i) => (
-                                  <div key={i} className="text-xs text-white/90 font-mono border-l-2 border-primary/40 pl-3 py-1 bg-white/[0.02] rounded-r">
-                                      {log}
-                                  </div>
-                              ))
-                          ) : (
-                              <div className="text-white/50 italic text-xs">No actions taken.</div>
-                          )}
-                          {game.logs.length > 8 && (
-                            <div className="pt-2 text-center">
-                              <button 
-                                onClick={() => setExpandedLogs(!expandedLogs)}
-                                className="text-xs text-primary font-bold hover:underline px-3 py-1 rounded bg-primary/10 border border-primary/20 transition-colors"
-                              >
-                                {expandedLogs ? 'Show Less Logs ▲' : `Show all ${game.logs.length} logs ▼`}
-                              </button>
-                            </div>
-                          )}
-                      </div>
-                  </div>
+                    );
+                  })()}
               </div>
           )}
 

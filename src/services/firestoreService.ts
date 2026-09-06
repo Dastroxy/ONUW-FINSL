@@ -375,7 +375,14 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   const game = snap.data() as GameState;
   
   const updates: any = {};
-  const logs: string[] = [...game.logs];
+  const logs: string[] = [...(game.logs || [])];
+
+  const addLog = (entry: string) => {
+    if (!logs.includes(entry)) {
+      logs.push(entry);
+    }
+  };
+
   const rawActor = game.players[payload.actorId];
   const actor = { ...rawActor };
   // Copycat acting as copied role: override originalRole so downstream handlers trigger
@@ -401,7 +408,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
       // SHIELD CHECK (Server-side safety)
       if ((payload.targetPlayerId && game.players[payload.targetPlayerId]?.shielded) || 
           (payload.secondTargetPlayerId && game.players[payload.secondTargetPlayerId]?.shielded)) {
-           logs.push(`${actor.name} (${actorRoleLabel}) tried to swap but was blocked by a shield 🛡️`);
+           addLog(`${actor.name} (${actorRoleLabel}) tried to swap but was blocked by a shield 🛡️`);
            updates.logs = logs;
            await updateDoc(gameRef, updates);
            return;
@@ -412,9 +419,11 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
          const p1 = game.players[payload.targetPlayerId];
          const p2 = game.players[payload.secondTargetPlayerId];
          if (p1 && p2) {
+             const p1Meta = ROLE_METADATA[p1.currentRole];
+             const p2Meta = ROLE_METADATA[p2.currentRole];
              updates[`players.${p1.id}.currentRole`] = p2.currentRole;
              updates[`players.${p2.id}.currentRole`] = p1.currentRole;
-             logs.push(`${actor.name} (${actorRoleLabel}) swapped ${p1.name} ↔ ${p2.name} 🔄`);
+             addLog(`${actor.name} (${actorRoleLabel}) swapped ${p1.name} (${p1Meta.name} ${p1Meta.icon}) ↔ ${p2.name} (${p2Meta.name} ${p2Meta.icon}) 🔄`);
          }
       } 
       // GREMLIN: Swap any two players (can include self)
@@ -422,9 +431,11 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
          const p1 = game.players[payload.targetPlayerId];
          const p2 = game.players[payload.secondTargetPlayerId];
          if (p1 && p2) {
+             const p1Meta = ROLE_METADATA[p1.currentRole];
+             const p2Meta = ROLE_METADATA[p2.currentRole];
              updates[`players.${p1.id}.currentRole`] = p2.currentRole;
              updates[`players.${p2.id}.currentRole`] = p1.currentRole;
-             logs.push(`${actor.name} (${actorRoleLabel}) swapped ${p1.name} ↔ ${p2.name} 🔄`);
+             addLog(`${actor.name} (${actorRoleLabel}) swapped ${p1.name} (${p1Meta.name} ${p1Meta.icon}) ↔ ${p2.name} (${p2Meta.name} ${p2Meta.icon}) 🔄`);
          }
       }
       // ROBBER: Swap self with target
@@ -433,10 +444,11 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
         if (target) {
             const stolenRole = target.currentRole;
             const stolenMeta = ROLE_METADATA[stolenRole];
+            const myOldMeta = ROLE_METADATA[actor.currentRole];
             
             updates[`players.${actor.id}.currentRole`] = stolenRole;
             updates[`players.${target.id}.currentRole`] = actor.currentRole;
-            logs.push(`${actor.name} (${actorRoleLabel}) swapped with ${target.name} → ${stolenMeta.name} ${stolenMeta.icon}`);
+            addLog(`${actor.name} (${actorRoleLabel}) robbed ${target.name} → took ${stolenMeta.name} ${stolenMeta.icon}, gave ${myOldMeta.name} ${myOldMeta.icon}`);
         }
       }
       // DRUNK: Swap self with center
@@ -446,6 +458,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
               const centerCard = game.centerCards[centerIndex];
               const playerRole = actor.currentRole;
               const newRoleMeta = ROLE_METADATA[centerCard.role];
+              const oldRoleMeta = ROLE_METADATA[playerRole];
               
               // Update center card role
               const newCenterCards = [...game.centerCards];
@@ -454,7 +467,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
 
               // Update player role
               updates[`players.${actor.id}.currentRole`] = centerCard.role;
-              logs.push(`${actor.name} (${actorRoleLabel}) swapped with Center Card → ${newRoleMeta.name} ${newRoleMeta.icon}`);
+              addLog(`${actor.name} (${actorRoleLabel}) blindly swapped card (${oldRoleMeta.name} ${oldRoleMeta.icon}) with Center Card → took ${newRoleMeta.name} ${newRoleMeta.icon}`);
           }
       }
       // WITCH: Swap center with player (must switch)
@@ -465,6 +478,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
                const centerCard = game.centerCards[centerIndex];
                const centerMeta = ROLE_METADATA[centerCard.role];
                const targetRole = target.currentRole;
+               const targetMeta = ROLE_METADATA[targetRole];
                
                // Update center
                const newCenterCards = [...game.centerCards];
@@ -473,7 +487,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
 
                // Update player
                updates[`players.${target.id}.currentRole`] = centerCard.role;
-               logs.push(`${actor.name} (${actorRoleLabel}) viewed Center (${centerMeta.name} ${centerMeta.icon}) → swapped with ${target.name}`);
+               addLog(`${actor.name} (${actorRoleLabel}) swapped Center ${centerMeta.name} ${centerMeta.icon} with ${target.name}'s card (${targetMeta.name} ${targetMeta.icon})`);
            }
       }
       // ALPHA WOLF: Swap center Wolf with player
@@ -485,6 +499,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
                const target = game.players[payload.targetPlayerId];
                if (target) {
                    const targetRole = target.currentRole;
+                   const targetMeta = ROLE_METADATA[targetRole];
 
                    // Update center with player's role
                    const newCenterCards = [...game.centerCards];
@@ -494,7 +509,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
                    // Update player with CENTER WOLF role (Explicitly Werewolf if it's the perp card)
                    updates[`players.${target.id}.currentRole`] = centerCard.role;
                    
-                   logs.push(`${actor.name} (${actorRoleLabel}) converted ${target.name} → Werewolf 🐺`);
+                   addLog(`${actor.name} (${actorRoleLabel}) exchanged ${target.name}'s card (${targetMeta.name} ${targetMeta.icon}) with Center Wolf → converted to Werewolf 🐺`);
                }
            }
       }
@@ -514,65 +529,72 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
      if (!isExcludedFromGenericView) {
          // SHIELD CHECK for View
          if (payload.targetPlayerId && game.players[payload.targetPlayerId]?.shielded) {
-             logs.push(`${actor.name} (${actorRoleLabel}) tried to view but was blocked by a shield 🛡️`);
+             addLog(`${actor.name} (${actorRoleLabel}) tried to view but was blocked by a shield 🛡️`);
              updates.logs = logs;
              await updateDoc(gameRef, updates);
              return;
          }
 
-         // Generic VIEW Logic for Seer, Insomniac, Apprentice Seer, Mystic Wolf, Mortician, etc.
+         // Generic VIEW Logic for Seer, Insomniac, Apprentice Seer, Mystic Wolf, Mortician, Psychic, etc.
          if (payload.targetPlayerId) {
-             if (actor.originalRole === RoleID.PSYCHIC) {
+             if (actor.originalRole === RoleID.INSOMNIAC) {
+                 const currentMeta = ROLE_METADATA[actor.currentRole];
+                 const unchanged = actor.currentRole === actor.originalRole;
+                 addLog(`${actor.name} (${actorRoleLabel}) viewed their own card → ${currentMeta.name} ${currentMeta.icon} ${unchanged ? '(Unchanged)' : '(Role Changed!)'}`);
+             } else if (actor.originalRole === RoleID.PSYCHIC) {
                  const t = game.players[payload.targetPlayerId];
                  if (t) {
                      const tm = ROLE_METADATA[t.currentRole];
-                     logs.push(`${actor.name} (Psychic) saw one neighbor's role: ${tm.name} ${tm.icon}`);
+                     addLog(`${actor.name} (Psychic) saw neighbor's role → ${tm.name} ${tm.icon}`);
+                 }
+             } else if (actor.originalRole === RoleID.MORTICIAN) {
+                 const t = game.players[payload.targetPlayerId];
+                 if (t) {
+                     const tm = ROLE_METADATA[t.currentRole];
+                     addLog(`${actor.name} (${actorRoleLabel}) viewed neighbor ${t.name} → ${tm.name} ${tm.icon}`);
                  }
              } else {
                  const t = game.players[payload.targetPlayerId];
                  if (t) {
                      const tm = ROLE_METADATA[t.currentRole];
-                     logs.push(`${actor.name} (${actorRoleLabel}) viewed ${t.name} → ${tm.name} ${tm.icon}`);
+                     addLog(`${actor.name} (${actorRoleLabel}) viewed ${t.name} → ${tm.name} ${tm.icon}`);
                  }
                  
                  if (payload.secondTargetPlayerId) {
                      const t2 = game.players[payload.secondTargetPlayerId];
                      if (t2) {
                          const tm2 = ROLE_METADATA[t2.currentRole];
-                         logs.push(`${actor.name} (${actorRoleLabel}) viewed ${t2.name} → ${tm2.name} ${tm2.icon}`);
+                         addLog(`${actor.name} (${actorRoleLabel}) viewed ${t2.name} → ${tm2.name} ${tm2.icon}`);
                      }
                  }
              }
          } 
          
          if (payload.targetCenterId) {
-             const c = game.centerCards.find(card => card.id === payload.targetCenterId);
-             if (c) {
-                 const cm = ROLE_METADATA[c.role];
-                 logs.push(`${actor.name} (${actorRoleLabel}) viewed Center Card → ${cm.name} ${cm.icon}`);
-             }
-             
-             if (payload.secondTargetCenterId) {
-                 const c2 = game.centerCards.find(card => card.id === payload.secondTargetCenterId);
-                 if (c2) {
-                     const cm2 = ROLE_METADATA[c2.role];
-                     logs.push(`${actor.name} (${actorRoleLabel}) viewed Center Card → ${cm2.name} ${cm2.icon}`);
-                 }
+             const c1 = game.centerCards.find(card => card.id === payload.targetCenterId);
+             const c2 = payload.secondTargetCenterId ? game.centerCards.find(card => card.id === payload.secondTargetCenterId) : null;
+             if (c1 && c2) {
+                 const cm1 = ROLE_METADATA[c1.role];
+                 const cm2 = ROLE_METADATA[c2.role];
+                 addLog(`${actor.name} (${actorRoleLabel}) viewed Center Cards → ${cm1.name} ${cm1.icon} & ${cm2.name} ${cm2.icon}`);
+             } else if (c1) {
+                 const cm1 = ROLE_METADATA[c1.role];
+                 addLog(`${actor.name} (${actorRoleLabel}) viewed Center Card → ${cm1.name} ${cm1.icon}`);
              }
          }
          
          if (actor.originalRole === RoleID.SQUIRE && !payload.targetPlayerId && !payload.targetCenterId) {
-             logs.push(`${actor.name} (Squire) checked the Evil team.`);
+             addLog(`${actor.name} (Squire) checked the Evil team.`);
          } else if (actor.originalRole === RoleID.BEHOLDER && !payload.targetPlayerId && !payload.targetCenterId) {
-             logs.push(`${actor.name} (Beholder) checked Seers.`);
+             addLog(`${actor.name} (Beholder) checked Seers.`);
          }
      }
   }
 
-  // DOPPELGANGER
-  if ((rawActor?.originalRole === RoleID.DOPPELGANGER || actor.originalRole === RoleID.DOPPELGANGER) && payload.targetPlayerId && (payload.actionType === 'COPY' || payload.actionType === 'VIEW' || payload.actionType === 'SWAP')) {
+  // DOPPELGANGER: Only process initial copy here; subsequent actions are handled under copied role
+  if ((rawActor?.originalRole === RoleID.DOPPELGANGER && actor.originalRole === RoleID.DOPPELGANGER) && payload.targetPlayerId && payload.actionType === 'COPY') {
       if (game.players[payload.targetPlayerId]?.shielded) {
-          logs.push(`${actor.name} (Doppelgänger) tried to copy ${game.players[payload.targetPlayerId].name} but was blocked by a shield 🛡️`);
+          addLog(`${actor.name} (Doppelgänger) tried to copy ${game.players[payload.targetPlayerId].name} but was blocked by a shield 🛡️`);
       } else {
           const target = game.players[payload.targetPlayerId];
           const role = target.currentRole;
@@ -580,7 +602,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
           const targetMeta = ROLE_METADATA[displayRole];
           updates[`players.${actor.id}.currentRole`] = role;
           updates[`players.${actor.id}.copiedRole`] = role;
-          logs.push(`${actor.name} (Doppelgänger) viewed ${target.name} → ${targetMeta.name} ${targetMeta.icon}`);
+          addLog(`${actor.name} (Doppelgänger) copied ${target.name} → ${targetMeta.name} ${targetMeta.icon}`);
           
           const queueRole = (role === RoleID.WEREWOLF_2) ? RoleID.WEREWOLF : (role === RoleID.MASON_2) ? RoleID.MASON : role;
           if (DOPPELGANGER_DEFERRED_ROLES.has(role) && !game.nightQueue.includes(queueRole) && target.originalRole !== RoleID.COPYCAT) {
@@ -599,15 +621,15 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
       }
   }
 
-  // COPYCAT
-  if ((rawActor?.originalRole === RoleID.COPYCAT || actor.originalRole === RoleID.COPYCAT) && payload.targetCenterId && (payload.actionType === 'COPY' || payload.actionType === 'VIEW' || payload.actionType === 'SWAP')) {
+  // COPYCAT: Only process initial copy here; subsequent actions are handled under copied role
+  if ((rawActor?.originalRole === RoleID.COPYCAT && actor.originalRole === RoleID.COPYCAT) && payload.targetCenterId && payload.actionType === 'COPY') {
       const centerIndex = game.centerCards.findIndex(c => c.id === payload.targetCenterId);
       if (centerIndex !== -1) {
           const role = game.centerCards[centerIndex].role;
           const meta = ROLE_METADATA[role];
           updates[`players.${actor.id}.currentRole`] = role;
           updates[`players.${actor.id}.copiedRole`] = role;
-          logs.push(`${actor.name} (Copycat) viewed Center → ${meta.name} ${meta.icon}`);
+          addLog(`${actor.name} (Copycat) copied Center Card → ${meta.name} ${meta.icon}`);
 
           const queueRole = (role === RoleID.WEREWOLF_2) ? RoleID.WEREWOLF : (role === RoleID.MASON_2) ? RoleID.MASON : role;
           if (COPYCAT_DEFERRED_ROLES.has(role) && !game.nightQueue.includes(queueRole)) {
@@ -630,15 +652,15 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   if ((actor.originalRole === RoleID.PARANORMAL_INVESTIGATOR || (actor as any).copiedRole === RoleID.PARANORMAL_INVESTIGATOR) && payload.targetPlayerId) {
       const target = game.players[payload.targetPlayerId];
       if (target?.shielded) {
-          logs.push(`${actor.name} (${actorRoleLabel}) checked ${target.name} but was SHIELDED 🛡️`);
+          addLog(`${actor.name} (${actorRoleLabel}) checked ${target.name} but was SHIELDED 🛡️`);
       } else if (target) {
           // Logic: If NOT Good (Village), become.
           const targetMeta = ROLE_METADATA[target.currentRole];
           if (targetMeta.team !== Team.GOOD) { 
               updates[`players.${actor.id}.currentRole`] = target.currentRole;
-              logs.push(`${actor.name} (${actorRoleLabel}) checked ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Became EVIL 👹)`);
+              addLog(`${actor.name} (${actorRoleLabel}) checked ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Converted to ${targetMeta.name} 👹)`);
           } else {
-              logs.push(`${actor.name} (${actorRoleLabel}) checked ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Stays Good)`);
+              addLog(`${actor.name} (${actorRoleLabel}) checked ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Stays Good)`);
           }
       }
   }
@@ -646,7 +668,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   // REVEALER
   if ((actor.originalRole === RoleID.REVEALER || actor.currentRole === RoleID.REVEALER || (actor as any).copiedRole === RoleID.REVEALER) && payload.targetPlayerId) {
       if (game.players[payload.targetPlayerId]?.shielded) {
-          logs.push(`${actor.name} (${actorRoleLabel}) tried to reveal ${game.players[payload.targetPlayerId].name} but was SHIELDED 🛡️`);
+          addLog(`${actor.name} (${actorRoleLabel}) tried to reveal ${game.players[payload.targetPlayerId].name} but was SHIELDED 🛡️`);
       } else {
           const target = game.players[payload.targetPlayerId];
           if (target) {
@@ -655,10 +677,10 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
               if (targetMeta.team === Team.GOOD) { 
                   updates[`players.${payload.targetPlayerId}.isRevealed`] = true;
                   updates[`players.${payload.targetPlayerId}.revealedRole`] = target.currentRole;
-                  logs.push(`${actor.name} (${actorRoleLabel}) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Stays Face Up)`);
+                  addLog(`${actor.name} (${actorRoleLabel}) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Stays Face Up)`);
               } else {
                   updates[`players.${payload.targetPlayerId}.revealedRole`] = null;
-                  logs.push(`${actor.name} (${actorRoleLabel}) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Hidden/Flipped back)`);
+                  addLog(`${actor.name} (${actorRoleLabel}) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Hidden/Flipped back)`);
               }
           }
       }
@@ -668,7 +690,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   if ((actor.originalRole === RoleID.EXPOSER || actor.currentRole === RoleID.EXPOSER || (actor as any).copiedRole === RoleID.EXPOSER) && payload.targetCenterId) {
      const c = game.centerCards.find(c => c.id === payload.targetCenterId);
      const meta = c ? ROLE_METADATA[c.role] : { name: 'Unknown', icon: '' };
-     logs.push(`${actor.name} (${actorRoleLabel}) exposed Center Card → ${meta.name} ${meta.icon}`);
+     addLog(`${actor.name} (${actorRoleLabel}) exposed Center Card → ${meta.name} ${meta.icon}`);
      updates.exposedCenterCardIds = arrayUnion(payload.targetCenterId);
   }
 
@@ -691,7 +713,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
 
               updates.nostradamusAnnouncement = `Nostradamus saw ${teamName} Team`;
               
-              logs.push(`${actor.name} (${actorRoleLabel}) viewed ${targets.length} cards. Last was ${lastTargetMeta.name} ${lastTargetMeta.icon}`);
+              addLog(`${actor.name} (${actorRoleLabel}) viewed ${targets.length} cards (last: ${lastTargetMeta.name} ${lastTargetMeta.icon}) → joined ${teamName} Team 🔮`);
           }
       }
   }
@@ -699,7 +721,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   // THING
   if ((actor.originalRole === RoleID.THING || actor.currentRole === RoleID.THING || (actor as any).copiedRole === RoleID.THING) && payload.actionType === 'TAP' && payload.targetPlayerId) {
       updates.thingTarget = payload.targetPlayerId;
-      logs.push(`${actor.name} (${actorRoleLabel}) tapped ${game.players[payload.targetPlayerId].name} 👻`);
+      addLog(`${actor.name} (${actorRoleLabel}) tapped ${game.players[payload.targetPlayerId].name} 👻`);
   }
 
   // CURATOR ARTIFACT PLACEMENT
@@ -716,7 +738,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   if (isCurator && (payload.actionType === 'PLACE_TOKEN' || payload.actionType === 'MARK') && payload.targetPlayerId) {
       const targetPlayer = game.players[payload.targetPlayerId];
       if (targetPlayer?.shielded) {
-          logs.push(`${actor.name} (${curatorLabel}) tried to place an Artifact Token, but ${targetPlayer.name} was shielded 🛡️`);
+          addLog(`${actor.name} (${curatorLabel}) tried to place an Artifact Token, but ${targetPlayer.name} was shielded 🛡️`);
       } else if (targetPlayer) {
           const chosenArtifact = (payload.artifactToken as ArtifactID) || ArtifactID.VOID_OF_NOTHINGNESS;
           updates[`players.${payload.targetPlayerId}.artifact`] = chosenArtifact;
@@ -728,17 +750,18 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
 
           if (meta?.isRoleChanging && meta?.associatedRole) {
               const newRoleName = ROLE_METADATA[meta.associatedRole]?.name || meta.associatedRole;
+              const oldRoleName = ROLE_METADATA[targetPlayer.currentRole]?.name || targetPlayer.currentRole;
               updates[`players.${payload.targetPlayerId}.currentRole`] = meta.associatedRole;
               updates[`players.${payload.targetPlayerId}.marks`] = []; // Overwrite cards and marks
-              logs.push(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — converted ${targetName} into a ${newRoleName}!`);
+              addLog(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — converted ${targetName} (${oldRoleName}) into a ${newRoleName}!`);
           } else if (chosenArtifact === ArtifactID.MASK_OF_MUTING) {
-              logs.push(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — ${targetName} is silenced and cannot speak!`);
+              addLog(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — ${targetName} is silenced and cannot speak!`);
           } else if (chosenArtifact === ArtifactID.DAGGER_OF_THE_TRAITOR) {
-              logs.push(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — turned ${targetName} into a Traitor to their initial team!`);
+              addLog(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — turned ${targetName} into a Traitor to their initial team!`);
           } else if (chosenArtifact === ArtifactID.VOID_OF_NOTHINGNESS) {
-              logs.push(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — has no effect.`);
+              addLog(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — has no effect.`);
           } else {
-              logs.push(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — ${meta?.effectSummary || 'special artifact effect applied'}.`);
+              addLog(`${actor.name} (${curatorLabel}) placed ${artName} on ${targetName} ${artIcon} — ${meta?.effectSummary || 'special artifact effect applied'}.`);
           }
       }
   }
@@ -750,9 +773,9 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
           const p2 = payload.secondTargetPlayerId ? game.players[payload.secondTargetPlayerId] : null;
           if (p1 && p2) {
               if (p1.shielded || p2.shielded) {
-                  logs.push(`${actor.name} (${actorRoleLabel}) tried to link lovers but target was shielded 🛡️`);
+                  addLog(`${actor.name} (${actorRoleLabel}) tried to link lovers but target was shielded 🛡️`);
               } else {
-                  logs.push(`${actor.name} (${actorRoleLabel}) linked ${p1.name} & ${p2.name} with Mark of Love 💘`);
+                  addLog(`${actor.name} (${actorRoleLabel}) linked ${p1.name} & ${p2.name} with Mark of Love 💘`);
                   updates[`players.${p1.id}.marks`] = arrayUnion("MARKED");
                   updates[`players.${p2.id}.marks`] = arrayUnion("MARKED");
               }
@@ -760,27 +783,27 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
       } else if (payload.targetPlayerId) {
           const target = game.players[payload.targetPlayerId];
           if (target?.shielded) {
-              logs.push(`${actor.name} (${actorRoleLabel}) tried to mark but target was shielded 🛡️`);
+              addLog(`${actor.name} (${actorRoleLabel}) tried to mark but target was shielded 🛡️`);
           } else if (target) {
               updates[`players.${payload.targetPlayerId}.marks`] = arrayUnion("MARKED");
               if (actor.originalRole === RoleID.VAMPIRE) {
-                  logs.push(`${actor.name} (${actorRoleLabel}) marked ${target.name} with Mark of the Vampire 🧛`);
+                  addLog(`${actor.name} (${actorRoleLabel}) marked ${target.name} with Mark of the Vampire 🧛`);
               } else if (actor.originalRole === RoleID.THE_COUNT) {
-                  logs.push(`${actor.name} (${actorRoleLabel}) marked ${target.name} with Mark of the Vampire 🧛👑`);
+                  addLog(`${actor.name} (${actorRoleLabel}) marked ${target.name} with Mark of the Vampire 🧛👑`);
               } else if (actor.originalRole === RoleID.RENFIELD) {
-                  logs.push(`${actor.name} (${actorRoleLabel}) placed Mark of the Bat on ${target.name} 🦇`);
+                  addLog(`${actor.name} (${actorRoleLabel}) placed Mark of the Bat on ${target.name} 🦇`);
               } else if (actor.originalRole === RoleID.ASSASSIN || actor.originalRole === RoleID.APPRENTICE_ASSASSIN) {
-                  logs.push(`${actor.name} (${actorRoleLabel}) placed Mark of the Assassin on ${target.name} 🗡️`);
+                  addLog(`${actor.name} (${actorRoleLabel}) placed Mark of the Assassin on ${target.name} 🗡️`);
               } else if (actor.originalRole === RoleID.DISEASED) {
-                  logs.push(`${actor.name} (${actorRoleLabel}) infected ${target.name} with Mark of Disease 🤢`);
+                  addLog(`${actor.name} (${actorRoleLabel}) infected ${target.name} with Mark of Disease 🤢`);
               } else if (actor.originalRole === RoleID.INSTIGATOR) {
-                  logs.push(`${actor.name} (${actorRoleLabel}) placed Mark of the Traitor on ${target.name} 🗡️`);
+                  addLog(`${actor.name} (${actorRoleLabel}) placed Mark of the Traitor on ${target.name} 🗡️`);
               } else if (actor.originalRole === RoleID.PRIEST) {
-                  logs.push(`${actor.name} (${actorRoleLabel}) blessed ${target.name} with Mark of Clarity ⛪`);
+                  addLog(`${actor.name} (${actorRoleLabel}) blessed ${target.name} with Mark of Clarity ⛪`);
               } else if (actor.originalRole === RoleID.PICKPOCKET) {
-                  logs.push(`${actor.name} (${actorRoleLabel}) pickpocketed ${target.name} 🤏`);
+                  addLog(`${actor.name} (${actorRoleLabel}) pickpocketed ${target.name} 🤏`);
               } else {
-                  logs.push(`${actor.name} (${actorRoleLabel}) marked ${target.name} ❌`);
+                  addLog(`${actor.name} (${actorRoleLabel}) marked ${target.name} ❌`);
               }
           }
       }
@@ -790,7 +813,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   if ((actor.originalRole === RoleID.SENTINEL || actor.currentRole === RoleID.SENTINEL || (actor as any).copiedRole === RoleID.SENTINEL) && payload.targetPlayerId) {
       if (payload.targetPlayerId !== payload.actorId) {
         updates[`players.${payload.targetPlayerId}.shielded`] = true;
-        logs.push(`${actor.name} (${actorRoleLabel}) shielded ${game.players[payload.targetPlayerId].name} 🛡️`);
+        addLog(`${actor.name} (${actorRoleLabel}) shielded ${game.players[payload.targetPlayerId].name} 🛡️`);
       }
   }
   
@@ -808,22 +831,26 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
           if (payload.direction === 'CLOCKWISE') {
               // Right Shift: P2 gets P1's role. P(i) gets P(i-1)'s role.
               const lastRole = roles[roles.length - 1];
+              const newRoles = [lastRole, ...roles.slice(0, roles.length - 1)];
               for (let i = shiftable.length - 1; i > 0; i--) {
                   updates[`players.${shiftable[i].id}.currentRole`] = roles[i-1];
               }
               updates[`players.${shiftable[0].id}.currentRole`] = lastRole;
-              logs.push(`${actor.name} (${actorRoleLabel}) shifted Clockwise ↻`);
+              const shiftSummary = shiftable.map((p, i) => `${p.name} (${ROLE_METADATA[roles[i]].name} → ${ROLE_METADATA[newRoles[i]].name})`).join(', ');
+              addLog(`${actor.name} (${actorRoleLabel}) rotated cards Clockwise ↻: ${shiftSummary}`);
           } else {
               // Left Shift: P1 gets P2's role. P(i) gets P(i+1)'s role.
               const firstRole = roles[0];
+              const newRoles = [...roles.slice(1), firstRole];
               for (let i = 0; i < shiftable.length - 1; i++) {
                   updates[`players.${shiftable[i].id}.currentRole`] = roles[i+1];
               }
               updates[`players.${shiftable[shiftable.length-1].id}.currentRole`] = firstRole;
-              logs.push(`${actor.name} (${actorRoleLabel}) shifted Anti-Clockwise ↺`);
+              const shiftSummary = shiftable.map((p, i) => `${p.name} (${ROLE_METADATA[roles[i]].name} → ${ROLE_METADATA[newRoles[i]].name})`).join(', ');
+              addLog(`${actor.name} (${actorRoleLabel}) rotated cards Anti-Clockwise ↺: ${shiftSummary}`);
           }
       } else {
-          logs.push(`${actor.name} (${actorRoleLabel}) tried to shift but not enough targets.`);
+          addLog(`${actor.name} (${actorRoleLabel}) tried to shift but not enough targets.`);
       }
   }
 
@@ -848,6 +875,86 @@ export const advanceNightTurn = async (gameId: string) => {
     
     const updates: any = { thingTarget: null };
     const players = Object.values(game.players) as Player[];
+    const logs: string[] = [...(game.logs || [])];
+
+    const addLog = (entry: string) => {
+        if (!logs.includes(entry)) {
+            logs.push(entry);
+        }
+    };
+
+    // Capture passive group/observational info for role that just finished
+    const finishingRole = game.nightQueue[game.currentNightRoleIndex];
+    if (finishingRole) {
+        if (finishingRole === RoleID.WEREWOLF) {
+            const wolfPlayers = players.filter(p => 
+                p.originalRole === RoleID.WEREWOLF || 
+                p.originalRole === RoleID.WEREWOLF_2 || 
+                ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && (p.currentRole === RoleID.WEREWOLF || p.currentRole === RoleID.WEREWOLF_2))
+            );
+            if (wolfPlayers.length > 1 && !logs.some(l => l.includes('Werewolves recognized each other'))) {
+                addLog(`Werewolves recognized each other: ${wolfPlayers.map(w => w.name).join(' & ')} 🐺`);
+            }
+        } else if (finishingRole === RoleID.MASON) {
+            const masonPlayers = players.filter(p => 
+                p.originalRole === RoleID.MASON || 
+                p.originalRole === RoleID.MASON_2 || 
+                ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && (p.currentRole === RoleID.MASON || p.currentRole === RoleID.MASON_2))
+            );
+            if (!logs.some(l => l.includes('Masons recognized each other') || l.includes('Lone Mason'))) {
+                if (masonPlayers.length > 1) {
+                    addLog(`Masons recognized each other: ${masonPlayers.map(m => m.name).join(' & ')} 🧱`);
+                } else if (masonPlayers.length === 1) {
+                    addLog(`Lone Mason (${masonPlayers[0].name}) checked for brothers → None in play 🧱`);
+                }
+            }
+        } else if (finishingRole === RoleID.MINION) {
+            if (!logs.some(l => l.includes('(Minion) saw evil players'))) {
+                const minionPlayer = players.find(p => p.originalRole === RoleID.MINION || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.MINION));
+                if (minionPlayer) {
+                    const evilAllies = players.filter(p => p.id !== minionPlayer.id && (ROLE_METADATA[p.currentRole]?.team === Team.EVIL || ROLE_METADATA[p.originalRole]?.team === Team.EVIL));
+                    const evilNames = evilAllies.length > 0 ? evilAllies.map(p => `${p.name} (${ROLE_METADATA[p.currentRole].name} ${ROLE_METADATA[p.currentRole].icon})`).join(', ') : 'None in play';
+                    addLog(`${minionPlayer.name} (Minion) saw evil players: ${evilNames} 👹`);
+                }
+            }
+        } else if (finishingRole === RoleID.SQUIRE) {
+            if (!logs.some(l => l.includes('(Squire) checked the Evil team:'))) {
+                const squirePlayer = players.find(p => p.originalRole === RoleID.SQUIRE || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.SQUIRE));
+                if (squirePlayer) {
+                    const evilPlayers = players.filter(p => p.id !== squirePlayer.id && ROLE_METADATA[p.originalRole]?.team === Team.EVIL && p.originalRole !== RoleID.SQUIRE && p.originalRole !== RoleID.MINION);
+                    const evilNames = evilPlayers.length > 0 ? evilPlayers.map(p => `${p.name} (${ROLE_METADATA[p.currentRole].name} ${ROLE_METADATA[p.currentRole].icon})`).join(', ') : 'None detected';
+                    addLog(`${squirePlayer.name} (Squire) checked the Evil team: ${evilNames} ⚔️`);
+                }
+            }
+        } else if (finishingRole === RoleID.BEHOLDER) {
+            if (!logs.some(l => l.includes('(Beholder) saw Seers:'))) {
+                const beholderPlayer = players.find(p => p.originalRole === RoleID.BEHOLDER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.BEHOLDER));
+                if (beholderPlayer) {
+                    const seer = players.find(p => p.originalRole === RoleID.SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.SEER));
+                    const appSeer = players.find(p => p.originalRole === RoleID.APPRENTICE_SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.APPRENTICE_SEER));
+                    const seen = [seer ? `${seer.name} (Seer 🔮)` : null, appSeer ? `${appSeer.name} (Appr. Seer 🔭)` : null].filter(Boolean).join(', ');
+                    addLog(`${beholderPlayer.name} (Beholder) saw Seers: ${seen || 'None in play'} 👁️`);
+                }
+            }
+        } else if (finishingRole === RoleID.APPRENTICE_TANNER) {
+            if (!logs.some(l => l.includes('(Apprentice Tanner) checked Tanner:'))) {
+                const appTanner = players.find(p => p.originalRole === RoleID.APPRENTICE_TANNER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.APPRENTICE_TANNER));
+                if (appTanner) {
+                    const tanner = players.find(p => p.originalRole === RoleID.TANNER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.TANNER));
+                    addLog(`${appTanner.name} (Apprentice Tanner) checked Tanner: ${tanner ? `${tanner.name} 🎭` : 'Not in play'}`);
+                }
+            }
+        } else if (finishingRole === RoleID.AURA_SEER) {
+            if (!logs.some(l => l.includes('(Aura Seer) detected cards moved/viewed by:'))) {
+                const auraSeer = players.find(p => p.originalRole === RoleID.AURA_SEER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.AURA_SEER));
+                if (auraSeer) {
+                    const actorIds = (game.nightActors || []).filter(id => id !== auraSeer.id);
+                    const actorNames = actorIds.map(id => game.players[id]?.name).filter(Boolean);
+                    addLog(`${auraSeer.name} (Aura Seer) detected cards moved/viewed by: ${actorNames.length > 0 ? actorNames.join(', ') : 'No one'} 🧿`);
+                }
+            }
+        }
+    }
 
     let nextIndex = game.currentNightRoleIndex + 1;
 
@@ -875,6 +982,7 @@ export const advanceNightTurn = async (gameId: string) => {
     }
 
     updates.currentNightRoleIndex = nextIndex;
+    updates.logs = logs;
     if (nextIndex >= game.nightQueue.length) {
       updates.phase = GamePhase.DISCUSSION;
       updates.timerEnd = Date.now() + 5 * 60 * 1000; // 5 mins
@@ -960,6 +1068,7 @@ export const finalizeGame = async (gameId: string) => {
    const werewolfRoles = [RoleID.WEREWOLF, RoleID.WEREWOLF_2, RoleID.ALPHA_WOLF, RoleID.MYSTIC_WOLF, RoleID.DREAM_WOLF];
    const vRoles = [RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT, RoleID.RENFIELD];
    const evilConversionRoles = [...werewolfRoles, ...vRoles, RoleID.MINION, RoleID.SQUIRE];
+   const votePhaseLogs: string[] = [];
    
    players.forEach(p => {
        if (p.currentRole === RoleID.CURSED) {
@@ -971,6 +1080,7 @@ export const finalizeGame = async (gameId: string) => {
                const newRole = hasWolfVoter ? RoleID.WEREWOLF : hasVampVoter ? RoleID.VAMPIRE : RoleID.WEREWOLF;
                p.currentRole = newRole;
                game.players[p.id].currentRole = newRole;
+               votePhaseLogs.push(`${p.name} (Cursed) was voted for by evil team → converted to ${newRole === RoleID.WEREWOLF ? 'Werewolf 🐺' : 'Vampire 🧛'}!`);
            }
        }
    });
@@ -993,6 +1103,10 @@ export const finalizeGame = async (gameId: string) => {
    const princeSaved = princeId && princeRawVotes > 0 && princeRawVotes >= rawMaxVotes;
    const voteThreshold = princeSaved ? 1 : 2;
 
+   if (princeSaved && princeId && game.players[princeId]) {
+       votePhaseLogs.push(`${game.players[princeId].name} (Prince) received the most votes but is immune to execution 👑`);
+   }
+
    if (maxVotes >= voteThreshold) {
        Object.keys(eliminationVotes).forEach(pid => {
            if (eliminationVotes[pid] === maxVotes) lynchVictims.push(pid);
@@ -1001,6 +1115,9 @@ export const finalizeGame = async (gameId: string) => {
        // 5. Apply Bodyguard Protection
        if (protectedId && lynchVictims.includes(protectedId)) {
            bodyguardSaveOccurred = true;
+           if (game.players[protectedId]) {
+               votePhaseLogs.push(`${bodyguard?.name || 'Bodyguard'} protected ${game.players[protectedId].name} from execution 🛡️`);
+           }
            // Protected player survives
            lynchVictims = lynchVictims.filter(id => id !== protectedId);
            
@@ -1045,6 +1162,10 @@ export const finalizeGame = async (gameId: string) => {
            if (player.currentRole === RoleID.HUNTER && player.votedFor && !processedHunters.has(pid)) {
                processedHunters.add(pid);
                const targetId = player.votedFor;
+               const targetPlayer = game.players[targetId];
+               if (targetPlayer) {
+                   votePhaseLogs.push(`${player.name} (Hunter) was eliminated and shot ${targetPlayer.name} 🏹`);
+               }
                
                // Check if target is already dead
                if (!eliminatedIds.includes(targetId)) {
@@ -1200,12 +1321,20 @@ export const finalizeGame = async (gameId: string) => {
        }
    }
    
+   const finalLogs = [...(game.logs || [])];
+   votePhaseLogs.forEach(entry => {
+       if (!finalLogs.includes(entry)) {
+           finalLogs.push(entry);
+       }
+   });
+
    const finalUpdates: any = {
        phase: GamePhase.RESULTS,
        winner: winnerDescription,
        winningTeam: winningTeam,
        eliminatedIds: eliminatedIds,
-       voteCounts: votes
+       voteCounts: votes,
+       logs: finalLogs
    };
 
    if (cursedConverted && cursedPlayer) {
