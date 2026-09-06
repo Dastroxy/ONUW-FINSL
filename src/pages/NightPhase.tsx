@@ -887,13 +887,14 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
       // SENTINEL uses PLACE_TOKEN to avoid MARKED string
       const actionType = activeRoleID === RoleID.SENTINEL ? 'PLACE_TOKEN' : 
+                      (activeRoleID === RoleID.DOPPELGANGER || activeRoleID === RoleID.COPYCAT) ? 'COPY' :
                       (['SEER', 'WEREWOLF', 'MINION', 'MASON', 'INSOMNIAC', 'APPRENTICE_SEER', 'MYSTIC_WOLF', 'EXPOSER', 'BEHOLDER', 'SQUIRE', 'APPRENTICE_TANNER', 'NOSTRADAMUS', 'MORTICIAN'].includes(activeRoleID)) ? 'VIEW' :
                       (['CURATOR', 'VAMPIRE', 'THE_COUNT', 'RENFIELD', 'CUPID', 'DISEASED', 'INSTIGATOR', 'PRIEST', 'ASSASSIN', 'PICKPOCKET'].includes(activeRoleID)) ? 'MARK' :
                       (['REVEALER'].includes(activeRoleID)) ? 'REVEAL' :
                       (activeRoleID === RoleID.THING) ? 'TAP' : 'SWAP';
 
-      // TROUBLEMAKER ANIMATION LOGIC (Optimized)
-      if (activeRoleID === RoleID.TROUBLEMAKER) {
+      // TROUBLEMAKER / GREMLIN ANIMATION LOGIC (Optimized)
+      if (activeRoleID === RoleID.TROUBLEMAKER || activeRoleID === RoleID.GREMLIN) {
         const [id1, id2] = selectedPlayers;
         const node1 = itemsRef.current.get(id1);
         const node2 = itemsRef.current.get(id2);

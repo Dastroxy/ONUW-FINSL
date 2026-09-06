@@ -365,19 +365,7 @@ export const toggleMasonReady = async (gameId: string, playerId: string) => {
     });
 
     if (shouldAdvance) {
-        const gameRef2 = doc(db, GAMES_COLLECTION, gameId);
-        const snap = await getDoc(gameRef2);
-        const game = snap.data() as GameState;
-        const updates: any = { masonReadyPlayers: [], thingTarget: null };
-        let nextIndex = game.currentNightRoleIndex + 1;
-        updates.currentNightRoleIndex = nextIndex;
-        if (nextIndex >= game.nightQueue.length) {
-            updates.phase = GamePhase.DISCUSSION;
-            updates.timerEnd = Date.now() + 5 * 60 * 1000;
-            updates.discussionReadyPlayers = [];
-            applyArtifactRoleChanges(game, updates);
-        }
-        await updateDoc(gameRef2, updates);
+        await advanceNightTurn(gameId);
     }
 };
 
@@ -388,158 +376,203 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   
   const updates: any = {};
   const logs: string[] = [...game.logs];
-  const actor = { ...game.players[payload.actorId] };
+  const rawActor = game.players[payload.actorId];
+  const actor = { ...rawActor };
   // Copycat acting as copied role: override originalRole so downstream handlers trigger
   if (((actor.originalRole === RoleID.COPYCAT || actor.originalRole === RoleID.DOPPELGANGER) && actor.currentRole !== actor.originalRole)) {
       actor.originalRole = (actor as any).copiedRole || actor.currentRole;
   }
   const roleName = ROLE_METADATA[actor.originalRole]?.name || 'Unknown';
+  const isDoppel = rawActor?.originalRole === RoleID.DOPPELGANGER && rawActor.originalRole !== actor.originalRole;
+  const isCopycat = rawActor?.originalRole === RoleID.COPYCAT && rawActor.originalRole !== actor.originalRole;
+  const actorRoleLabel = isDoppel ? `Doppelgänger-${roleName}` : isCopycat ? `Copycat-${roleName}` : roleName;
   
   // --- BASE GAME ---
   
   if (payload.actionType === 'SWAP') {
-    // SHIELD CHECK (Server-side safety)
-    if ((payload.targetPlayerId && game.players[payload.targetPlayerId].shielded) || 
-        (payload.secondTargetPlayerId && game.players[payload.secondTargetPlayerId].shielded)) {
-         logs.push(`${actor.name} (${roleName}) tried to swap but was blocked by a shield 🛡️`);
-         updates.logs = logs;
-         await updateDoc(gameRef, updates);
-         return;
-    }
+    const isSwapRole = actor.originalRole === RoleID.TROUBLEMAKER || 
+                       actor.originalRole === RoleID.GREMLIN || 
+                       actor.originalRole === RoleID.ROBBER || 
+                       actor.originalRole === RoleID.DRUNK || 
+                       actor.originalRole === RoleID.WITCH || 
+                       actor.originalRole === RoleID.ALPHA_WOLF;
 
-    // TROUBLEMAKER: Swap two other players
-    if (payload.targetPlayerId && payload.secondTargetPlayerId && payload.actorId !== payload.targetPlayerId && payload.actorId !== payload.secondTargetPlayerId) {
-       const p1 = game.players[payload.targetPlayerId];
-       const p2 = game.players[payload.secondTargetPlayerId];
-       updates[`players.${p1.id}.currentRole`] = p2.currentRole;
-       updates[`players.${p2.id}.currentRole`] = p1.currentRole;
-       logs.push(`${actor.name} (Troublemaker) swapped ${p1.name} ↔ ${p2.name} 🔄`);
-    } 
-    // ROBBER: Swap self with target
-    else if (payload.targetPlayerId && !payload.secondTargetPlayerId && actor.originalRole === RoleID.ROBBER) {
-      const target = game.players[payload.targetPlayerId];
-      const stolenRole = target.currentRole;
-      const stolenMeta = ROLE_METADATA[stolenRole];
-      
-      updates[`players.${actor.id}.currentRole`] = stolenRole;
-      updates[`players.${target.id}.currentRole`] = actor.currentRole;
-      logs.push(`${actor.name} (Robber) swapped with ${target.name} → ${stolenMeta.name} ${stolenMeta.icon}`);
-    }
-    // DRUNK: Swap self with center
-    else if (payload.targetCenterId && actor.originalRole === RoleID.DRUNK) {
-        const centerIndex = game.centerCards.findIndex(c => c.id === payload.targetCenterId);
-        if (centerIndex !== -1) {
-            const centerCard = game.centerCards[centerIndex];
-            const playerRole = actor.currentRole;
-            const newRoleMeta = ROLE_METADATA[centerCard.role];
+    if (isSwapRole) {
+      // SHIELD CHECK (Server-side safety)
+      if ((payload.targetPlayerId && game.players[payload.targetPlayerId]?.shielded) || 
+          (payload.secondTargetPlayerId && game.players[payload.secondTargetPlayerId]?.shielded)) {
+           logs.push(`${actor.name} (${actorRoleLabel}) tried to swap but was blocked by a shield 🛡️`);
+           updates.logs = logs;
+           await updateDoc(gameRef, updates);
+           return;
+      }
+
+      // TROUBLEMAKER: Swap two other players
+      if (actor.originalRole === RoleID.TROUBLEMAKER && payload.targetPlayerId && payload.secondTargetPlayerId) {
+         const p1 = game.players[payload.targetPlayerId];
+         const p2 = game.players[payload.secondTargetPlayerId];
+         if (p1 && p2) {
+             updates[`players.${p1.id}.currentRole`] = p2.currentRole;
+             updates[`players.${p2.id}.currentRole`] = p1.currentRole;
+             logs.push(`${actor.name} (${actorRoleLabel}) swapped ${p1.name} ↔ ${p2.name} 🔄`);
+         }
+      } 
+      // GREMLIN: Swap any two players (can include self)
+      else if (actor.originalRole === RoleID.GREMLIN && payload.targetPlayerId && payload.secondTargetPlayerId) {
+         const p1 = game.players[payload.targetPlayerId];
+         const p2 = game.players[payload.secondTargetPlayerId];
+         if (p1 && p2) {
+             updates[`players.${p1.id}.currentRole`] = p2.currentRole;
+             updates[`players.${p2.id}.currentRole`] = p1.currentRole;
+             logs.push(`${actor.name} (${actorRoleLabel}) swapped ${p1.name} ↔ ${p2.name} 🔄`);
+         }
+      }
+      // ROBBER: Swap self with target
+      else if (payload.targetPlayerId && !payload.secondTargetPlayerId && actor.originalRole === RoleID.ROBBER) {
+        const target = game.players[payload.targetPlayerId];
+        if (target) {
+            const stolenRole = target.currentRole;
+            const stolenMeta = ROLE_METADATA[stolenRole];
             
-            // Update center card role
-            const newCenterCards = [...game.centerCards];
-            newCenterCards[centerIndex] = { ...centerCard, role: playerRole };
-            updates.centerCards = newCenterCards;
-
-            // Update player role
-            updates[`players.${actor.id}.currentRole`] = centerCard.role;
-            logs.push(`${actor.name} (Drunk) swapped with Center Card → ${newRoleMeta.name} ${newRoleMeta.icon}`);
+            updates[`players.${actor.id}.currentRole`] = stolenRole;
+            updates[`players.${target.id}.currentRole`] = actor.currentRole;
+            logs.push(`${actor.name} (${actorRoleLabel}) swapped with ${target.name} → ${stolenMeta.name} ${stolenMeta.icon}`);
         }
-    }
-    // WITCH: Swap center with player (must switch)
-    else if (payload.targetCenterId && payload.targetPlayerId && actor.originalRole === RoleID.WITCH) {
-         const centerIndex = game.centerCards.findIndex(c => c.id === payload.targetCenterId);
-         const target = game.players[payload.targetPlayerId];
-         if (centerIndex !== -1 && target) {
-             const centerCard = game.centerCards[centerIndex];
-             const centerMeta = ROLE_METADATA[centerCard.role];
-             const targetRole = target.currentRole;
-             
-             // Update center
-             const newCenterCards = [...game.centerCards];
-             newCenterCards[centerIndex] = { ...centerCard, role: targetRole };
-             updates.centerCards = newCenterCards;
+      }
+      // DRUNK: Swap self with center
+      else if (payload.targetCenterId && actor.originalRole === RoleID.DRUNK) {
+          const centerIndex = game.centerCards.findIndex(c => c.id === payload.targetCenterId);
+          if (centerIndex !== -1) {
+              const centerCard = game.centerCards[centerIndex];
+              const playerRole = actor.currentRole;
+              const newRoleMeta = ROLE_METADATA[centerCard.role];
+              
+              // Update center card role
+              const newCenterCards = [...game.centerCards];
+              newCenterCards[centerIndex] = { ...centerCard, role: playerRole };
+              updates.centerCards = newCenterCards;
 
-             // Update player
-             updates[`players.${target.id}.currentRole`] = centerCard.role;
-             logs.push(`${actor.name} (Witch) viewed Center (${centerMeta.name} ${centerMeta.icon}) → swapped with ${target.name}`);
-         }
-    }
-    // ALPHA WOLF: Swap center Wolf with player
-    else if (payload.targetPlayerId && actor.originalRole === RoleID.ALPHA_WOLF) {
-         // Find center-alpha
-         const centerIndex = game.centerCards.findIndex(c => c.id === 'center-alpha');
-         if (centerIndex !== -1) {
-             const centerCard = game.centerCards[centerIndex];
-             const target = game.players[payload.targetPlayerId];
-             const targetRole = target.currentRole;
+              // Update player role
+              updates[`players.${actor.id}.currentRole`] = centerCard.role;
+              logs.push(`${actor.name} (${actorRoleLabel}) swapped with Center Card → ${newRoleMeta.name} ${newRoleMeta.icon}`);
+          }
+      }
+      // WITCH: Swap center with player (must switch)
+      else if (payload.targetCenterId && payload.targetPlayerId && actor.originalRole === RoleID.WITCH) {
+           const centerIndex = game.centerCards.findIndex(c => c.id === payload.targetCenterId);
+           const target = game.players[payload.targetPlayerId];
+           if (centerIndex !== -1 && target) {
+               const centerCard = game.centerCards[centerIndex];
+               const centerMeta = ROLE_METADATA[centerCard.role];
+               const targetRole = target.currentRole;
+               
+               // Update center
+               const newCenterCards = [...game.centerCards];
+               newCenterCards[centerIndex] = { ...centerCard, role: targetRole };
+               updates.centerCards = newCenterCards;
 
-             // Update center with player's role
-             const newCenterCards = [...game.centerCards];
-             newCenterCards[centerIndex] = { ...centerCard, role: targetRole };
-             updates.centerCards = newCenterCards;
+               // Update player
+               updates[`players.${target.id}.currentRole`] = centerCard.role;
+               logs.push(`${actor.name} (${actorRoleLabel}) viewed Center (${centerMeta.name} ${centerMeta.icon}) → swapped with ${target.name}`);
+           }
+      }
+      // ALPHA WOLF: Swap center Wolf with player
+      else if (payload.targetPlayerId && actor.originalRole === RoleID.ALPHA_WOLF) {
+           // Find center-alpha
+           const centerIndex = game.centerCards.findIndex(c => c.id === 'center-alpha');
+           if (centerIndex !== -1) {
+               const centerCard = game.centerCards[centerIndex];
+               const target = game.players[payload.targetPlayerId];
+               if (target) {
+                   const targetRole = target.currentRole;
 
-             // Update player with CENTER WOLF role (Explicitly Werewolf if it's the perp card)
-             updates[`players.${target.id}.currentRole`] = centerCard.role;
-             
-             logs.push(`${actor.name} (Alpha Wolf) converted ${target.name} → Werewolf 🐺`);
-         }
+                   // Update center with player's role
+                   const newCenterCards = [...game.centerCards];
+                   newCenterCards[centerIndex] = { ...centerCard, role: targetRole };
+                   updates.centerCards = newCenterCards;
+
+                   // Update player with CENTER WOLF role (Explicitly Werewolf if it's the perp card)
+                   updates[`players.${target.id}.currentRole`] = centerCard.role;
+                   
+                   logs.push(`${actor.name} (${actorRoleLabel}) converted ${target.name} → Werewolf 🐺`);
+               }
+           }
+      }
     }
   }
   
   if (payload.actionType === 'VIEW') {
-     // SHIELD CHECK for View (Except PI who has custom logic below)
-     if (payload.targetPlayerId && game.players[payload.targetPlayerId].shielded && actor.originalRole !== RoleID.PARANORMAL_INVESTIGATOR) {
-         logs.push(`${actor.name} (${roleName}) tried to view but was blocked by a shield 🛡️`);
-         updates.logs = logs;
-         await updateDoc(gameRef, updates);
-         return;
-     }
+     const isExcludedFromGenericView = 
+         actor.originalRole === RoleID.PARANORMAL_INVESTIGATOR ||
+         actor.originalRole === RoleID.NOSTRADAMUS ||
+         actor.originalRole === RoleID.WITCH ||
+         actor.originalRole === RoleID.REVEALER ||
+         actor.originalRole === RoleID.EXPOSER ||
+         actor.originalRole === RoleID.DOPPELGANGER ||
+         actor.originalRole === RoleID.COPYCAT;
 
-     // Generic VIEW Logic for Seer, Insomniac, Apprentice Seer, etc.
-     if (payload.targetPlayerId) {
-         // SPECIAL HANDLING FOR PSYCHIC (Avoid generic log revealing name)
-         if (actor.originalRole === RoleID.PSYCHIC) {
-             const t = game.players[payload.targetPlayerId];
-             const tm = ROLE_METADATA[t.currentRole];
-             logs.push(`${actor.name} (Psychic) saw one neighbor's role: ${tm.name} ${tm.icon}`);
-         } else {
-             const t = game.players[payload.targetPlayerId];
-             const tm = ROLE_METADATA[t.currentRole];
-             logs.push(`${actor.name} (${roleName}) viewed ${t.name} → ${tm.name} ${tm.icon}`);
-             
-             if (payload.secondTargetPlayerId) {
-                 const t2 = game.players[payload.secondTargetPlayerId];
-                 const tm2 = ROLE_METADATA[t2.currentRole];
-                 logs.push(`${actor.name} (${roleName}) viewed ${t2.name} → ${tm2.name} ${tm2.icon}`);
-             }
+     if (!isExcludedFromGenericView) {
+         // SHIELD CHECK for View
+         if (payload.targetPlayerId && game.players[payload.targetPlayerId]?.shielded) {
+             logs.push(`${actor.name} (${actorRoleLabel}) tried to view but was blocked by a shield 🛡️`);
+             updates.logs = logs;
+             await updateDoc(gameRef, updates);
+             return;
          }
-     } 
-     
-     if (payload.targetCenterId) {
-         const c = game.centerCards.find(card => card.id === payload.targetCenterId);
-         if (c) {
-             const cm = ROLE_METADATA[c.role];
-             logs.push(`${actor.name} (${roleName}) viewed Center Card → ${cm.name} ${cm.icon}`);
+
+         // Generic VIEW Logic for Seer, Insomniac, Apprentice Seer, Mystic Wolf, Mortician, etc.
+         if (payload.targetPlayerId) {
+             if (actor.originalRole === RoleID.PSYCHIC) {
+                 const t = game.players[payload.targetPlayerId];
+                 if (t) {
+                     const tm = ROLE_METADATA[t.currentRole];
+                     logs.push(`${actor.name} (Psychic) saw one neighbor's role: ${tm.name} ${tm.icon}`);
+                 }
+             } else {
+                 const t = game.players[payload.targetPlayerId];
+                 if (t) {
+                     const tm = ROLE_METADATA[t.currentRole];
+                     logs.push(`${actor.name} (${actorRoleLabel}) viewed ${t.name} → ${tm.name} ${tm.icon}`);
+                 }
+                 
+                 if (payload.secondTargetPlayerId) {
+                     const t2 = game.players[payload.secondTargetPlayerId];
+                     if (t2) {
+                         const tm2 = ROLE_METADATA[t2.currentRole];
+                         logs.push(`${actor.name} (${actorRoleLabel}) viewed ${t2.name} → ${tm2.name} ${tm2.icon}`);
+                     }
+                 }
+             }
+         } 
+         
+         if (payload.targetCenterId) {
+             const c = game.centerCards.find(card => card.id === payload.targetCenterId);
+             if (c) {
+                 const cm = ROLE_METADATA[c.role];
+                 logs.push(`${actor.name} (${actorRoleLabel}) viewed Center Card → ${cm.name} ${cm.icon}`);
+             }
+             
+             if (payload.secondTargetCenterId) {
+                 const c2 = game.centerCards.find(card => card.id === payload.secondTargetCenterId);
+                 if (c2) {
+                     const cm2 = ROLE_METADATA[c2.role];
+                     logs.push(`${actor.name} (${actorRoleLabel}) viewed Center Card → ${cm2.name} ${cm2.icon}`);
+                 }
+             }
          }
          
-         if (payload.secondTargetCenterId) {
-             const c2 = game.centerCards.find(card => card.id === payload.secondTargetCenterId);
-             if (c2) {
-                 const cm2 = ROLE_METADATA[c2.role];
-                 logs.push(`${actor.name} (${roleName}) viewed Center Card → ${cm2.name} ${cm2.icon}`);
-             }
+         if (actor.originalRole === RoleID.SQUIRE && !payload.targetPlayerId && !payload.targetCenterId) {
+             logs.push(`${actor.name} (Squire) checked the Evil team.`);
+         } else if (actor.originalRole === RoleID.BEHOLDER && !payload.targetPlayerId && !payload.targetCenterId) {
+             logs.push(`${actor.name} (Beholder) checked Seers.`);
          }
-     }
-     
-     if (actor.originalRole === RoleID.SQUIRE && !payload.targetPlayerId && !payload.targetCenterId) {
-         logs.push(`${actor.name} (Squire) checked the Evil team.`);
-     } else if (actor.originalRole === RoleID.BEHOLDER && !payload.targetPlayerId && !payload.targetCenterId) {
-         logs.push(`${actor.name} (Beholder) checked Seers.`);
      }
   }
 
   // DOPPELGANGER
-  if (actor.originalRole === RoleID.DOPPELGANGER && payload.targetPlayerId && payload.actionType !== 'PLACE_TOKEN') {
-      if (game.players[payload.targetPlayerId].shielded) {
-          logs.push(`${actor.name} (Doppelgänger) blocked by shield 🛡️`);
+  if ((rawActor?.originalRole === RoleID.DOPPELGANGER || actor.originalRole === RoleID.DOPPELGANGER) && payload.targetPlayerId && (payload.actionType === 'COPY' || payload.actionType === 'VIEW' || payload.actionType === 'SWAP')) {
+      if (game.players[payload.targetPlayerId]?.shielded) {
+          logs.push(`${actor.name} (Doppelgänger) tried to copy ${game.players[payload.targetPlayerId].name} but was blocked by a shield 🛡️`);
       } else {
           const target = game.players[payload.targetPlayerId];
           const role = target.currentRole;
@@ -567,7 +600,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   }
 
   // COPYCAT
-  if (actor.originalRole === RoleID.COPYCAT && payload.targetCenterId) {
+  if ((rawActor?.originalRole === RoleID.COPYCAT || actor.originalRole === RoleID.COPYCAT) && payload.targetCenterId && (payload.actionType === 'COPY' || payload.actionType === 'VIEW' || payload.actionType === 'SWAP')) {
       const centerIndex = game.centerCards.findIndex(c => c.id === payload.targetCenterId);
       if (centerIndex !== -1) {
           const role = game.centerCards[centerIndex].role;
@@ -594,78 +627,82 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   }
 
   // PARANORMAL_INVESTIGATOR
-  if (actor.originalRole === RoleID.PARANORMAL_INVESTIGATOR && payload.targetPlayerId) {
+  if ((actor.originalRole === RoleID.PARANORMAL_INVESTIGATOR || (actor as any).copiedRole === RoleID.PARANORMAL_INVESTIGATOR) && payload.targetPlayerId) {
       const target = game.players[payload.targetPlayerId];
-      if (target.shielded) {
-          logs.push(`${actor.name} (P.I.) checked ${target.name} but was SHIELDED 🛡️`);
-      } else {
+      if (target?.shielded) {
+          logs.push(`${actor.name} (${actorRoleLabel}) checked ${target.name} but was SHIELDED 🛡️`);
+      } else if (target) {
           // Logic: If NOT Good (Village), become.
           const targetMeta = ROLE_METADATA[target.currentRole];
           if (targetMeta.team !== Team.GOOD) { 
               updates[`players.${actor.id}.currentRole`] = target.currentRole;
-              logs.push(`${actor.name} (P.I.) checked ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Became EVIL 👹)`);
+              logs.push(`${actor.name} (${actorRoleLabel}) checked ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Became EVIL 👹)`);
           } else {
-              logs.push(`${actor.name} (P.I.) checked ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Stays Good)`);
+              logs.push(`${actor.name} (${actorRoleLabel}) checked ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Stays Good)`);
           }
       }
   }
 
   // REVEALER
   if ((actor.originalRole === RoleID.REVEALER || actor.currentRole === RoleID.REVEALER || (actor as any).copiedRole === RoleID.REVEALER) && payload.targetPlayerId) {
-      if (game.players[payload.targetPlayerId].shielded) {
-          logs.push(`${actor.name} (Revealer) tried to reveal ${game.players[payload.targetPlayerId].name} but was SHIELDED 🛡️`);
+      if (game.players[payload.targetPlayerId]?.shielded) {
+          logs.push(`${actor.name} (${actorRoleLabel}) tried to reveal ${game.players[payload.targetPlayerId].name} but was SHIELDED 🛡️`);
       } else {
           const target = game.players[payload.targetPlayerId];
-          const targetMeta = ROLE_METADATA[target.currentRole];
-          
-          if (targetMeta.team === Team.GOOD) { 
-              updates[`players.${payload.targetPlayerId}.isRevealed`] = true;
-              updates[`players.${payload.targetPlayerId}.revealedRole`] = target.currentRole;
-              logs.push(`${actor.name} (Revealer) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Stays Face Up)`);
-          } else {
-              updates[`players.${payload.targetPlayerId}.revealedRole`] = null;
-              logs.push(`${actor.name} (Revealer) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Hidden/Flipped back)`);
+          if (target) {
+              const targetMeta = ROLE_METADATA[target.currentRole];
+              
+              if (targetMeta.team === Team.GOOD) { 
+                  updates[`players.${payload.targetPlayerId}.isRevealed`] = true;
+                  updates[`players.${payload.targetPlayerId}.revealedRole`] = target.currentRole;
+                  logs.push(`${actor.name} (${actorRoleLabel}) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Stays Face Up)`);
+              } else {
+                  updates[`players.${payload.targetPlayerId}.revealedRole`] = null;
+                  logs.push(`${actor.name} (${actorRoleLabel}) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Hidden/Flipped back)`);
+              }
           }
       }
   }
 
   // EXPOSER (Uses REVEAL action too but for center)
-  if (actor.originalRole === RoleID.EXPOSER && payload.targetCenterId) {
+  if ((actor.originalRole === RoleID.EXPOSER || actor.currentRole === RoleID.EXPOSER || (actor as any).copiedRole === RoleID.EXPOSER) && payload.targetCenterId) {
      const c = game.centerCards.find(c => c.id === payload.targetCenterId);
      const meta = c ? ROLE_METADATA[c.role] : { name: 'Unknown', icon: '' };
-     logs.push(`${actor.name} (Exposer) exposed Center Card → ${meta.name} ${meta.icon}`);
+     logs.push(`${actor.name} (${actorRoleLabel}) exposed Center Card → ${meta.name} ${meta.icon}`);
      updates.exposedCenterCardIds = arrayUnion(payload.targetCenterId);
   }
 
   // NOSTRADAMUS
   if (actor.originalRole === RoleID.NOSTRADAMUS || actor.currentRole === RoleID.NOSTRADAMUS || (actor as any).copiedRole === RoleID.NOSTRADAMUS) {
-      const targets = [payload.targetPlayerId, payload.secondTargetPlayerId, payload.thirdTargetPlayerId].filter(t => t);
+      const targets = [payload.targetPlayerId, payload.secondTargetPlayerId, payload.thirdTargetPlayerId].filter(Boolean) as string[];
       if (targets.length > 0) {
-          const lastTargetId = targets[targets.length - 1]!;
-          const lastTargetRole = game.players[lastTargetId].currentRole;
-          const lastTargetMeta = ROLE_METADATA[lastTargetRole];
-          
-          updates[`players.${actor.id}.nostradamusRole`] = lastTargetRole;
-          
-          let teamName = "Independent";
-          if (lastTargetMeta.team === Team.GOOD) teamName = "Village";
-          else if (lastTargetMeta.team === Team.EVIL) teamName = "Werewolf";
-          else if (lastTargetMeta.team === Team.MINORITY) teamName = "Vampire";
+          const lastTargetId = targets[targets.length - 1];
+          const lastTargetPlayer = game.players[lastTargetId];
+          if (lastTargetPlayer) {
+              const lastTargetRole = lastTargetPlayer.currentRole;
+              const lastTargetMeta = ROLE_METADATA[lastTargetRole];
+              
+              updates[`players.${actor.id}.nostradamusRole`] = lastTargetRole;
+              
+              let teamName = "Independent";
+              if (lastTargetMeta.team === Team.GOOD) teamName = "Village";
+              else if (lastTargetMeta.team === Team.EVIL) teamName = "Werewolf";
+              else if (lastTargetMeta.team === Team.MINORITY) teamName = "Vampire";
 
-          updates.nostradamusAnnouncement = `Nostradamus saw ${teamName} Team`;
-          
-          logs.push(`${actor.name} (Nostradamus) viewed ${targets.length} cards. Last was ${lastTargetMeta.name} ${lastTargetMeta.icon}`);
+              updates.nostradamusAnnouncement = `Nostradamus saw ${teamName} Team`;
+              
+              logs.push(`${actor.name} (${actorRoleLabel}) viewed ${targets.length} cards. Last was ${lastTargetMeta.name} ${lastTargetMeta.icon}`);
+          }
       }
   }
 
   // THING
-  if (actor.originalRole === RoleID.THING && payload.actionType === 'TAP' && payload.targetPlayerId) {
+  if ((actor.originalRole === RoleID.THING || actor.currentRole === RoleID.THING || (actor as any).copiedRole === RoleID.THING) && payload.actionType === 'TAP' && payload.targetPlayerId) {
       updates.thingTarget = payload.targetPlayerId;
-      logs.push(`${actor.name} (Thing) tapped ${game.players[payload.targetPlayerId].name} 👻`);
+      logs.push(`${actor.name} (${actorRoleLabel}) tapped ${game.players[payload.targetPlayerId].name} 👻`);
   }
 
   // CURATOR ARTIFACT PLACEMENT
-  const rawActor = game.players[payload.actorId];
   const isDoppelCurator = rawActor?.originalRole === RoleID.DOPPELGANGER && (rawActor.currentRole === RoleID.CURATOR || (rawActor as any).copiedRole === RoleID.CURATOR);
   const isCopycatCurator = rawActor?.originalRole === RoleID.COPYCAT && (rawActor.currentRole === RoleID.CURATOR || (rawActor as any).copiedRole === RoleID.CURATOR);
   const isCurator = actor.originalRole === RoleID.CURATOR || 
@@ -707,31 +744,58 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   }
 
   // MARK PLACEMENT
-  if (payload.actionType === 'MARK' && payload.targetPlayerId && !isCurator) {
-      if (game.players[payload.targetPlayerId].shielded) {
-          logs.push(`${actor.name} (${roleName}) tried to mark but target was shielded 🛡️`);
-      } else {
-          let markEmoji = '❌';
-          if (actor.originalRole === RoleID.VAMPIRE) markEmoji = '🧛';
-          if (actor.originalRole === RoleID.ASSASSIN) markEmoji = '🗡️';
-          
-          logs.push(`${actor.name} (${roleName}) marked ${game.players[payload.targetPlayerId].name} ${markEmoji}`);
-          await updateDoc(gameRef, {
-              [`players.${payload.targetPlayerId}.marks`]: arrayUnion("MARKED")
-          });
+  if (payload.actionType === 'MARK' && !isCurator) {
+      if (actor.originalRole === RoleID.CUPID) {
+          const p1 = payload.targetPlayerId ? game.players[payload.targetPlayerId] : null;
+          const p2 = payload.secondTargetPlayerId ? game.players[payload.secondTargetPlayerId] : null;
+          if (p1 && p2) {
+              if (p1.shielded || p2.shielded) {
+                  logs.push(`${actor.name} (${actorRoleLabel}) tried to link lovers but target was shielded 🛡️`);
+              } else {
+                  logs.push(`${actor.name} (${actorRoleLabel}) linked ${p1.name} & ${p2.name} with Mark of Love 💘`);
+                  updates[`players.${p1.id}.marks`] = arrayUnion("MARKED");
+                  updates[`players.${p2.id}.marks`] = arrayUnion("MARKED");
+              }
+          }
+      } else if (payload.targetPlayerId) {
+          const target = game.players[payload.targetPlayerId];
+          if (target?.shielded) {
+              logs.push(`${actor.name} (${actorRoleLabel}) tried to mark but target was shielded 🛡️`);
+          } else if (target) {
+              updates[`players.${payload.targetPlayerId}.marks`] = arrayUnion("MARKED");
+              if (actor.originalRole === RoleID.VAMPIRE) {
+                  logs.push(`${actor.name} (${actorRoleLabel}) marked ${target.name} with Mark of the Vampire 🧛`);
+              } else if (actor.originalRole === RoleID.THE_COUNT) {
+                  logs.push(`${actor.name} (${actorRoleLabel}) marked ${target.name} with Mark of the Vampire 🧛👑`);
+              } else if (actor.originalRole === RoleID.RENFIELD) {
+                  logs.push(`${actor.name} (${actorRoleLabel}) placed Mark of the Bat on ${target.name} 🦇`);
+              } else if (actor.originalRole === RoleID.ASSASSIN || actor.originalRole === RoleID.APPRENTICE_ASSASSIN) {
+                  logs.push(`${actor.name} (${actorRoleLabel}) placed Mark of the Assassin on ${target.name} 🗡️`);
+              } else if (actor.originalRole === RoleID.DISEASED) {
+                  logs.push(`${actor.name} (${actorRoleLabel}) infected ${target.name} with Mark of Disease 🤢`);
+              } else if (actor.originalRole === RoleID.INSTIGATOR) {
+                  logs.push(`${actor.name} (${actorRoleLabel}) placed Mark of the Traitor on ${target.name} 🗡️`);
+              } else if (actor.originalRole === RoleID.PRIEST) {
+                  logs.push(`${actor.name} (${actorRoleLabel}) blessed ${target.name} with Mark of Clarity ⛪`);
+              } else if (actor.originalRole === RoleID.PICKPOCKET) {
+                  logs.push(`${actor.name} (${actorRoleLabel}) pickpocketed ${target.name} 🤏`);
+              } else {
+                  logs.push(`${actor.name} (${actorRoleLabel}) marked ${target.name} ❌`);
+              }
+          }
       }
   }
 
   // SENTINEL
-  if (actor.originalRole === RoleID.SENTINEL && payload.targetPlayerId) {
+  if ((actor.originalRole === RoleID.SENTINEL || actor.currentRole === RoleID.SENTINEL || (actor as any).copiedRole === RoleID.SENTINEL) && payload.targetPlayerId) {
       if (payload.targetPlayerId !== payload.actorId) {
         updates[`players.${payload.targetPlayerId}.shielded`] = true;
-        logs.push(`${actor.name} (Sentinel) shielded ${game.players[payload.targetPlayerId].name} 🛡️`);
+        logs.push(`${actor.name} (${actorRoleLabel}) shielded ${game.players[payload.targetPlayerId].name} 🛡️`);
       }
   }
   
   // VILLAGE IDIOT
-  if (actor.originalRole === RoleID.VILLAGE_IDIOT && payload.actionType === 'ROTATE' && payload.direction) {
+  if ((actor.originalRole === RoleID.VILLAGE_IDIOT || actor.currentRole === RoleID.VILLAGE_IDIOT || (actor as any).copiedRole === RoleID.VILLAGE_IDIOT) && payload.actionType === 'ROTATE' && payload.direction) {
       const sortedPlayers = Object.values(game.players)
           .filter(p => p.seatId !== null)
           .sort((a, b) => a.seatId! - b.seatId!);
@@ -748,7 +812,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
                   updates[`players.${shiftable[i].id}.currentRole`] = roles[i-1];
               }
               updates[`players.${shiftable[0].id}.currentRole`] = lastRole;
-              logs.push(`${actor.name} (Village Idiot) shifted Clockwise ↻`);
+              logs.push(`${actor.name} (${actorRoleLabel}) shifted Clockwise ↻`);
           } else {
               // Left Shift: P1 gets P2's role. P(i) gets P(i+1)'s role.
               const firstRole = roles[0];
@@ -756,10 +820,10 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
                   updates[`players.${shiftable[i].id}.currentRole`] = roles[i+1];
               }
               updates[`players.${shiftable[shiftable.length-1].id}.currentRole`] = firstRole;
-               logs.push(`${actor.name} (Village Idiot) shifted Anti-Clockwise ↺`);
+              logs.push(`${actor.name} (${actorRoleLabel}) shifted Anti-Clockwise ↺`);
           }
       } else {
-          logs.push(`${actor.name} (Village Idiot) tried to shift but not enough targets.`);
+          logs.push(`${actor.name} (${actorRoleLabel}) tried to shift but not enough targets.`);
       }
   }
 
