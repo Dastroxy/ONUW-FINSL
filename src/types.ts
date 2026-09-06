@@ -85,6 +85,7 @@ export interface Player {
   artifact: string | null;
   shielded: boolean; // Sentinel shield
   isRevealed: boolean; // True if revealed by Revealer/Exposer
+  revealedRole?: RoleID | null; // Original card revealed by Revealer
   isHost: boolean;
   votedFor: string | null; // player ID
   joined: number; // Timestamp for sorting

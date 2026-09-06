@@ -260,16 +260,39 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                   </h3>
                   <div className="flex flex-wrap justify-center gap-4 sm:gap-4 sm:p-6">
                       {revealedPlayers.map(p => {
-                          const meta = ROLE_METADATA[p.currentRole];
+                          const isOwner = p.id === me.id;
+                          const displayRole = (isOwner || !p.artifact) 
+                              ? p.currentRole 
+                              : (p.revealedRole || p.originalRole || p.currentRole);
+                          const meta = ROLE_METADATA[displayRole];
+                          const artId = p.artifact as ArtifactID | undefined;
+                          const artMeta = artId ? ARTIFACT_METADATA[artId] : null;
+
                           return (
                               <div key={p.id} className="flex flex-col items-center">
                                   <div className="relative">
-                                      <RoleCard role={p.currentRole} revealed={true} size="sm" className="shadow-[0_0_20px_rgba(18,184,134,0.4)] ring-2 ring-[#12b886]" />
+                                      <RoleCard role={displayRole} revealed={true} size="sm" className="shadow-[0_0_20px_rgba(18,184,134,0.4)] ring-2 ring-[#12b886]" />
                                       <div className="absolute -top-3 -right-3 w-6 h-6 bg-[#12b886] text-black font-bold rounded-full flex items-center justify-center text-xs animate-bounce">!</div>
+                                      {p.artifact && (
+                                          <div 
+                                              className="absolute -top-2 -left-2 z-20 w-7 h-7 rounded-full bg-amber-950/90 border border-amber-400 flex items-center justify-center text-xs shadow-[0_0_12px_rgba(245,158,11,0.6)] backdrop-blur-sm"
+                                              title={isOwner ? `Artifact: ${artMeta?.name || 'Attached'}` : "Artifact Token Attached"}
+                                          >
+                                              🏺
+                                          </div>
+                                      )}
                                   </div>
-                                  <div className="mt-2 text-center">
-                                      <span className="block text-[#dcf5eb] font-bold text-sm">{p.name}</span>
+                                  <div className="mt-2 text-center flex flex-col items-center">
+                                      <span className="block text-[#dcf5eb] font-bold text-sm">
+                                          {p.name} {isOwner && <span className="text-amber-300 text-xs font-semibold">(You)</span>}
+                                      </span>
                                       <span className="block text-[10px] text-[#12b886] uppercase tracking-wide">is {meta.name}</span>
+                                      {p.artifact && (
+                                          <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-amber-950/70 border border-amber-500/40 text-[9px] font-bold text-amber-300 shadow-sm">
+                                              <span>🏺</span>
+                                              <span>{isOwner ? (artMeta?.name || 'Artifact Attached') : 'Artifact Attached'}</span>
+                                          </span>
+                                      )}
                                   </div>
                               </div>
                           );

@@ -55,6 +55,7 @@ export const createGame = async (hostName: string, hostUid: string, icon?: strin
     artifact: null,
     shielded: false,
     isRevealed: false,
+    revealedRole: null,
     isHost: true,
     votedFor: null,
     joined: Date.now()
@@ -128,6 +129,7 @@ export const joinGame = async (gameId: string, playerName: string, playerUid: st
     artifact: null,
     shielded: false,
     isRevealed: false,
+    revealedRole: null,
     isHost: false,
     votedFor: null,
     joined: Date.now()
@@ -241,6 +243,7 @@ export const startGameSetup = async (gameId: string) => {
     updates[`players.${pid}.marks`] = ['MARK_OF_CLARITY']; // "all players automatically receive a Mark of Clarity"
     updates[`players.${pid}.shielded`] = false;
     updates[`players.${pid}.isRevealed`] = false;
+    updates[`players.${pid}.revealedRole`] = null;
     updates[`players.${pid}.artifact`] = null;
     updates[`players.${pid}.nostradamusRole`] = null;
   });
@@ -617,8 +620,10 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
           
           if (targetMeta.team === Team.GOOD) { 
               updates[`players.${payload.targetPlayerId}.isRevealed`] = true;
+              updates[`players.${payload.targetPlayerId}.revealedRole`] = target.currentRole;
               logs.push(`${actor.name} (Revealer) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Stays Face Up)`);
           } else {
+              updates[`players.${payload.targetPlayerId}.revealedRole`] = null;
               logs.push(`${actor.name} (Revealer) revealed ${target.name} → ${targetMeta.name} ${targetMeta.icon} (Hidden/Flipped back)`);
           }
       }
@@ -1164,6 +1169,7 @@ export const resetGame = async (gameId: string) => {
             marks: [],
             shielded: false,
             isRevealed: false,
+            revealedRole: null,
             artifact: null,
             nostradamusRole: null
         };

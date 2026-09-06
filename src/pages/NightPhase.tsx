@@ -1579,32 +1579,35 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                       </div>
 
                       {/* ALPHA WOLF 4TH CARD - CLEANLY DISPLAYED BELOW THE 3 CENTER CARDS */}
-                      {activeRoleID === RoleID.ALPHA_WOLF && alphaCenterCard && (
-                          <div className="mt-5 flex flex-col items-center animate-fade-in">
-                              <div className="flex items-center gap-1.5 mb-2 px-3 py-1 rounded-full bg-red-950/60 border border-red-500/40 shadow-sm">
-                                  <span className="text-red-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                      <span>🐺</span> Alpha Wolf Center Card
-                                  </span>
+                      {activeRoleID === RoleID.ALPHA_WOLF && alphaCenterCard && (() => {
+                          const isAlphaExchanged = !!swappedPlayerId || step === 'FINISHED' || alphaCenterCard.role !== RoleID.WEREWOLF;
+                          return (
+                              <div className="mt-5 flex flex-col items-center animate-fade-in">
+                                  <div className="flex items-center gap-1.5 mb-2 px-3 py-1 rounded-full bg-red-950/60 border border-red-500/40 shadow-sm">
+                                      <span className="text-red-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                          <span>🐺</span> {isAlphaExchanged ? "Center Card (Mystery)" : "Alpha Wolf Center Card"}
+                                      </span>
+                                  </div>
+                                  <NightCard 
+                                      key={alphaCenterCard.id}
+                                      id={alphaCenterCard.id} 
+                                      label={isAlphaExchanged && swappedPlayerName ? `Exchanged with ${swappedPlayerName}` : isAlphaExchanged ? "Mystery Card" : "Center Wolf"} 
+                                      role={isAlphaExchanged ? undefined : RoleID.WEREWOLF} 
+                                      isCenter={true}
+                                      isSelected={swappingIds.includes(alphaCenterCard.id) || isAlphaExchanged} 
+                                      isRevealed={!isAlphaExchanged} 
+                                      isSwapping={swappingIds.includes(alphaCenterCard.id)}
+                                      disabled={true} 
+                                      onClick={() => {}}
+                                      innerRef={(el) => { if (el) itemsRef.current.set(alphaCenterCard.id, el); }}
+                                      style={tmStyles[alphaCenterCard.id]}
+                                      swapBadge={isAlphaExchanged ? "MYSTERY" : undefined}
+                                      badgeColor="red"
+                                      className={isAlphaExchanged ? "!border-red-500 !ring-4 !ring-red-500/80 !shadow-[0_0_25px_rgba(239,68,68,0.7)]" : "!border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.3)]"}
+                                  />
                               </div>
-                              <NightCard 
-                                  key={`${alphaCenterCard.id}-${alphaCenterCard.role}`}
-                                  id={alphaCenterCard.id} 
-                                  label={swappedPlayerName ? `Exchanged with ${swappedPlayerName}` : "Center Wolf"} 
-                                  role={alphaCenterCard.role} 
-                                  isCenter={true}
-                                  isSelected={swappingIds.includes(alphaCenterCard.id) || !!swappedPlayerId} 
-                                  isRevealed={true} 
-                                  isSwapping={swappingIds.includes(alphaCenterCard.id)}
-                                  disabled={true} 
-                                  onClick={() => {}}
-                                  innerRef={(el) => { if (el) itemsRef.current.set(alphaCenterCard.id, el); }}
-                                  style={tmStyles[alphaCenterCard.id]}
-                                  swapBadge={swappedPlayerId ? "EXCHANGED" : undefined}
-                                  badgeColor="red"
-                                  className={swappedPlayerId ? "!border-red-500 !ring-4 !ring-red-500/80 !shadow-[0_0_25px_rgba(239,68,68,0.7)]" : "!border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.3)]"}
-                              />
-                          </div>
-                      )}
+                          );
+                      })()}
                   </div>
               )}
               
