@@ -387,9 +387,9 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
 
   const rawActor = game.players[payload.actorId];
   const actor = { ...rawActor };
-  // Copycat acting as copied role: override originalRole so downstream handlers trigger
-  if (((actor.originalRole === RoleID.COPYCAT || actor.originalRole === RoleID.DOPPELGANGER) && actor.currentRole !== actor.originalRole)) {
-      actor.originalRole = (actor as any).copiedRole || actor.currentRole;
+  // Copycat / Doppelgänger acting as copied role: override originalRole so downstream handlers trigger
+  if ((actor.originalRole === RoleID.COPYCAT || actor.originalRole === RoleID.DOPPELGANGER) && (actor as any).copiedRole) {
+      actor.originalRole = (actor as any).copiedRole;
   }
   const roleName = ROLE_METADATA[actor.originalRole]?.name || 'Unknown';
   const isDoppel = rawActor?.originalRole === RoleID.DOPPELGANGER && rawActor.originalRole !== actor.originalRole;
@@ -407,9 +407,9 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
                        actor.originalRole === RoleID.ALPHA_WOLF;
 
     if (isSwapRole) {
-      // SHIELD CHECK (Server-side safety)
-      if ((payload.targetPlayerId && game.players[payload.targetPlayerId]?.shielded) || 
-          (payload.secondTargetPlayerId && game.players[payload.secondTargetPlayerId]?.shielded)) {
+      // SHIELD CHECK (Server-side safety: others cannot swap shielded cards, but self-swap is allowed)
+      if ((payload.targetPlayerId && payload.targetPlayerId !== actor.id && game.players[payload.targetPlayerId]?.shielded) || 
+          (payload.secondTargetPlayerId && payload.secondTargetPlayerId !== actor.id && game.players[payload.secondTargetPlayerId]?.shielded)) {
            addLog(`${actor.name} (${actorRoleLabel}) tried to swap but was blocked by a shield 🛡️`);
            updates.logs = logs;
            await updateDoc(gameRef, updates);
@@ -529,8 +529,8 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
          actor.originalRole === RoleID.COPYCAT;
 
      if (!isExcludedFromGenericView) {
-         // SHIELD CHECK for View
-         if (payload.targetPlayerId && game.players[payload.targetPlayerId]?.shielded) {
+         // SHIELD CHECK for View (others blocked by shield, self-view allowed)
+         if (payload.targetPlayerId && payload.targetPlayerId !== actor.id && game.players[payload.targetPlayerId]?.shielded) {
              addLog(`${actor.name} (${actorRoleLabel}) tried to view but was blocked by a shield 🛡️`);
              updates.logs = logs;
              await updateDoc(gameRef, updates);
@@ -541,7 +541,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
          if (payload.targetPlayerId) {
              if (actor.originalRole === RoleID.INSOMNIAC) {
                  const currentMeta = ROLE_METADATA[actor.currentRole];
-                 const unchanged = actor.currentRole === actor.originalRole;
+                 const unchanged = actor.currentRole === RoleID.INSOMNIAC;
                  addLog(`${actor.name} (${actorRoleLabel}) viewed their own card → ${currentMeta.name} ${currentMeta.icon} ${unchanged ? '(Unchanged)' : '(Role Changed!)'}`);
              } else if (actor.originalRole === RoleID.PSYCHIC) {
                  const t = game.players[payload.targetPlayerId];
@@ -909,44 +909,53 @@ export const advanceNightTurn = async (gameId: string) => {
                 }
             }
         } else if (finishingRole === RoleID.MINION) {
-            if (!logs.some(l => l.includes('(Minion) saw evil players'))) {
-                const minionPlayer = players.find(p => {
-                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
-                    return pRole === RoleID.MINION;
-                });
-                if (minionPlayer) {
+            const minionPlayers = players.filter(p => {
+                const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                return pRole === RoleID.MINION;
+            });
+            for (const minionPlayer of minionPlayers) {
+                const isDoppel = minionPlayer.originalRole === RoleID.DOPPELGANGER;
+                const isCopycat = minionPlayer.originalRole === RoleID.COPYCAT;
+                const roleLabel = isDoppel ? 'Doppelgänger-Minion' : isCopycat ? 'Copycat-Minion' : 'Minion';
+                if (!logs.some(l => l.includes(`${minionPlayer.name} (${roleLabel}) saw evil players`))) {
                     const evilAllies = players.filter(p => {
                         if (p.id === minionPlayer.id) return false;
                         const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
                         return ROLE_METADATA[pRole]?.team === Team.EVIL && pRole !== RoleID.MINION;
                     });
                     const evilNames = evilAllies.length > 0 ? evilAllies.map(p => `${p.name} (${ROLE_METADATA[p.currentRole].name} ${ROLE_METADATA[p.currentRole].icon})`).join(', ') : 'None in play';
-                    addLog(`${minionPlayer.name} (Minion) saw evil players: ${evilNames} 👹`);
+                    addLog(`${minionPlayer.name} (${roleLabel}) saw evil players: ${evilNames} 👹`);
                 }
             }
         } else if (finishingRole === RoleID.SQUIRE) {
-            if (!logs.some(l => l.includes('(Squire) checked the Evil team:'))) {
-                const squirePlayer = players.find(p => {
-                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
-                    return pRole === RoleID.SQUIRE;
-                });
-                if (squirePlayer) {
+            const squirePlayers = players.filter(p => {
+                const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                return pRole === RoleID.SQUIRE;
+            });
+            for (const squirePlayer of squirePlayers) {
+                const isDoppel = squirePlayer.originalRole === RoleID.DOPPELGANGER;
+                const isCopycat = squirePlayer.originalRole === RoleID.COPYCAT;
+                const roleLabel = isDoppel ? 'Doppelgänger-Squire' : isCopycat ? 'Copycat-Squire' : 'Squire';
+                if (!logs.some(l => l.includes(`${squirePlayer.name} (${roleLabel}) checked the Evil team`))) {
                     const evilPlayers = players.filter(p => {
                         if (p.id === squirePlayer.id) return false;
                         const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
                         return ROLE_METADATA[pRole]?.team === Team.EVIL && pRole !== RoleID.SQUIRE && pRole !== RoleID.MINION;
                     });
                     const evilNames = evilPlayers.length > 0 ? evilPlayers.map(p => `${p.name} (${ROLE_METADATA[p.currentRole].name} ${ROLE_METADATA[p.currentRole].icon})`).join(', ') : 'None detected';
-                    addLog(`${squirePlayer.name} (Squire) checked the Evil team: ${evilNames} ⚔️`);
+                    addLog(`${squirePlayer.name} (${roleLabel}) checked the Evil team: ${evilNames} ⚔️`);
                 }
             }
         } else if (finishingRole === RoleID.BEHOLDER) {
-            if (!logs.some(l => l.includes('(Beholder) saw Seers:'))) {
-                const beholderPlayer = players.find(p => {
-                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
-                    return pRole === RoleID.BEHOLDER;
-                });
-                if (beholderPlayer) {
+            const beholderPlayers = players.filter(p => {
+                const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                return pRole === RoleID.BEHOLDER;
+            });
+            for (const beholderPlayer of beholderPlayers) {
+                const isDoppel = beholderPlayer.originalRole === RoleID.DOPPELGANGER;
+                const isCopycat = beholderPlayer.originalRole === RoleID.COPYCAT;
+                const roleLabel = isDoppel ? 'Doppelgänger-Beholder' : isCopycat ? 'Copycat-Beholder' : 'Beholder';
+                if (!logs.some(l => l.includes(`${beholderPlayer.name} (${roleLabel}) saw Seers`))) {
                     const seer = players.find(p => {
                         const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
                         return pRole === RoleID.SEER;
@@ -956,33 +965,54 @@ export const advanceNightTurn = async (gameId: string) => {
                         return pRole === RoleID.APPRENTICE_SEER;
                     });
                     const seen = [seer ? `${seer.name} (Seer 🔮)` : null, appSeer ? `${appSeer.name} (Appr. Seer 🔭)` : null].filter(Boolean).join(', ');
-                    addLog(`${beholderPlayer.name} (Beholder) saw Seers: ${seen || 'None in play'} 👁️`);
+                    addLog(`${beholderPlayer.name} (${roleLabel}) saw Seers: ${seen || 'None in play'} 👁️`);
                 }
             }
         } else if (finishingRole === RoleID.APPRENTICE_TANNER) {
-            if (!logs.some(l => l.includes('(Apprentice Tanner) checked Tanner:'))) {
-                const appTanner = players.find(p => {
-                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
-                    return pRole === RoleID.APPRENTICE_TANNER;
-                });
-                if (appTanner) {
+            const appTannerPlayers = players.filter(p => {
+                const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                return pRole === RoleID.APPRENTICE_TANNER;
+            });
+            for (const appTanner of appTannerPlayers) {
+                const isDoppel = appTanner.originalRole === RoleID.DOPPELGANGER;
+                const isCopycat = appTanner.originalRole === RoleID.COPYCAT;
+                const roleLabel = isDoppel ? 'Doppelgänger-Apprentice Tanner' : isCopycat ? 'Copycat-Apprentice Tanner' : 'Apprentice Tanner';
+                if (!logs.some(l => l.includes(`${appTanner.name} (${roleLabel}) checked Tanner`))) {
                     const tanner = players.find(p => {
                         const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
                         return pRole === RoleID.TANNER;
                     });
-                    addLog(`${appTanner.name} (Apprentice Tanner) checked Tanner: ${tanner ? `${tanner.name} 🎭` : 'Not in play'}`);
+                    addLog(`${appTanner.name} (${roleLabel}) checked Tanner: ${tanner ? `${tanner.name} 🎭` : 'Not in play'}`);
                 }
             }
         } else if (finishingRole === RoleID.AURA_SEER) {
-            if (!logs.some(l => l.includes('(Aura Seer) detected cards moved/viewed by:'))) {
-                const auraSeer = players.find(p => {
-                    const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
-                    return pRole === RoleID.AURA_SEER;
-                });
-                if (auraSeer) {
+            const auraSeerPlayers = players.filter(p => {
+                const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                return pRole === RoleID.AURA_SEER;
+            });
+            for (const auraSeer of auraSeerPlayers) {
+                const isDoppel = auraSeer.originalRole === RoleID.DOPPELGANGER;
+                const isCopycat = auraSeer.originalRole === RoleID.COPYCAT;
+                const roleLabel = isDoppel ? 'Doppelgänger-Aura Seer' : isCopycat ? 'Copycat-Aura Seer' : 'Aura Seer';
+                if (!logs.some(l => l.includes(`${auraSeer.name} (${roleLabel}) detected cards`))) {
                     const actorIds = (game.nightActors || []).filter(id => id !== auraSeer.id);
                     const actorNames = actorIds.map(id => game.players[id]?.name).filter(Boolean);
-                    addLog(`${auraSeer.name} (Aura Seer) detected cards moved/viewed by: ${actorNames.length > 0 ? actorNames.join(', ') : 'No one'} 🧿`);
+                    addLog(`${auraSeer.name} (${roleLabel}) detected cards moved/viewed by: ${actorNames.length > 0 ? actorNames.join(', ') : 'No one'} 🧿`);
+                }
+            }
+        } else if (finishingRole === RoleID.INSOMNIAC) {
+            const insomniacPlayers = players.filter(p => {
+                const pRole = (p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) ? p.copiedRole : p.originalRole;
+                return pRole === RoleID.INSOMNIAC;
+            });
+            for (const insomniac of insomniacPlayers) {
+                const isDoppel = insomniac.originalRole === RoleID.DOPPELGANGER;
+                const isCopycat = insomniac.originalRole === RoleID.COPYCAT;
+                const roleLabel = isDoppel ? 'Doppelgänger-Insomniac' : isCopycat ? 'Copycat-Insomniac' : 'Insomniac';
+                if (!logs.some(l => l.includes(`${insomniac.name} (${roleLabel}) viewed their own card`))) {
+                    const currentMeta = ROLE_METADATA[insomniac.currentRole];
+                    const unchanged = insomniac.currentRole === RoleID.INSOMNIAC;
+                    addLog(`${insomniac.name} (${roleLabel}) viewed their own card → ${currentMeta.name} ${currentMeta.icon} ${unchanged ? '(Unchanged)' : '(Role Changed!)'}`);
                 }
             }
         }

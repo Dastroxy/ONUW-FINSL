@@ -241,8 +241,11 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
   // INSOMNIAC AUTO-REVEAL LOGIC
   const isInsomniac = activeRoleID === RoleID.INSOMNIAC;
+  const isMeInsomniac = me.originalRole === RoleID.INSOMNIAC || 
+    ((me.originalRole === RoleID.DOPPELGANGER || me.originalRole === RoleID.COPYCAT) && me.copiedRole === RoleID.INSOMNIAC);
+
   useEffect(() => {
-    if (isInsomniac && step === 'SELECTING' && !autoRevealed.current) {
+    if (isInsomniac && isMeInsomniac && step === 'SELECTING' && !autoRevealed.current) {
         autoRevealed.current = true;
         // Auto-select self for glow
         setSelectedPlayers([me.id]);
@@ -265,7 +268,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
         }, 800); // 0.8s delay
         return () => clearTimeout(timer);
     }
-  }, [isInsomniac, step, me.id, me.currentRole, game.id]);
+  }, [isInsomniac, isMeInsomniac, step, me.id, me.currentRole, game.id]);
 
   // PSYCHIC LOGIC - CALCULATE RANDOM NEIGHBOR
   useEffect(() => {
@@ -552,8 +555,8 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           return;
       }
       
-      // SHIELD BLOCKING LOGIC
-      if (targetPlayer.shielded && activeRoleID !== RoleID.SENTINEL) {
+      // SHIELD BLOCKING LOGIC (others cannot view or move this card; self check/move is permitted)
+      if (targetPlayer.shielded && activeRoleID !== RoleID.SENTINEL && pid !== me.id) {
           // If PI, we still consume a "check" even if blocked? Usually yes.
           if (activeRoleID === RoleID.PARANORMAL_INVESTIGATOR) {
               if (piState.finished || piState.becomeEvil) return;
