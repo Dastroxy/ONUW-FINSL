@@ -17,15 +17,22 @@
   --font-display: 'Cinzel', serif;
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
 html, body {
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: auto;
 }
 
 body {
   background: linear-gradient(160deg, #090614 0%, #10091e 40%, #090614 100%);
   color: #e8e0d4;
   min-height: 100dvh;
-  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   position: relative;
 }
 
@@ -72,8 +79,11 @@ body::after {
 }
 
 * {
-  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
 }
 
 .card-glow {
