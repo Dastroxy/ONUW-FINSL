@@ -104,9 +104,11 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
           }
 
           // Nostradamus override
-          if (p.originalRole === RoleID.NOSTRADAMUS && p.nostradamusRole) {
+          if ((p.originalRole === RoleID.NOSTRADAMUS || ((p.originalRole === RoleID.DOPPELGANGER || p.originalRole === RoleID.COPYCAT) && p.currentRole === RoleID.NOSTRADAMUS)) && p.nostradamusRole) {
                const adoptedMeta = ROLE_METADATA[p.nostradamusRole];
-               if (adoptedMeta.team === game.winningTeam) won = true;
+               const died = eliminated.includes(p.id);
+               if (!died && adoptedMeta.team === game.winningTeam) won = true;
+               else won = false;
           } 
           // Tanner override (Independent Win)
           else if (game.winningTeam === Team.INDEPENDENT) {

@@ -18,12 +18,12 @@ export const DOPPELGANGER_IMMEDIATE_ROLES = new Set<RoleID>([
   RoleID.SENTINEL, RoleID.ALPHA_WOLF, RoleID.MYSTIC_WOLF, RoleID.APPRENTICE_SEER,
   RoleID.PARANORMAL_INVESTIGATOR, RoleID.WITCH, RoleID.VILLAGE_IDIOT,
   RoleID.DISEASED, RoleID.CUPID, RoleID.INSTIGATOR, RoleID.THING,
-  RoleID.CURATOR
+  RoleID.CURATOR, RoleID.NOSTRADAMUS, RoleID.REVEALER
 ]);
 
 export const DOPPELGANGER_DEFERRED_ROLES = new Set<RoleID>([
   RoleID.MASON, RoleID.MASON_2, RoleID.WEREWOLF, RoleID.WEREWOLF_2,
-  RoleID.MINION, RoleID.INSOMNIAC, RoleID.REVEALER,
+  RoleID.MINION, RoleID.INSOMNIAC,
   RoleID.VAMPIRE, RoleID.THE_COUNT, RoleID.RENFIELD, RoleID.PRIEST,
   RoleID.ASSASSIN, RoleID.APPRENTICE_ASSASSIN, RoleID.MARKSMAN,
   RoleID.PICKPOCKET, RoleID.GREMLIN, RoleID.PSYCHIC, RoleID.EXPOSER,
@@ -611,7 +611,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   }
 
   // REVEALER
-  if (actor.originalRole === RoleID.REVEALER && payload.targetPlayerId) {
+  if ((actor.originalRole === RoleID.REVEALER || actor.currentRole === RoleID.REVEALER || (actor as any).copiedRole === RoleID.REVEALER) && payload.targetPlayerId) {
       if (game.players[payload.targetPlayerId].shielded) {
           logs.push(`${actor.name} (Revealer) tried to reveal ${game.players[payload.targetPlayerId].name} but was SHIELDED 🛡️`);
       } else {
@@ -638,7 +638,7 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   }
 
   // NOSTRADAMUS
-  if (actor.originalRole === RoleID.NOSTRADAMUS) {
+  if (actor.originalRole === RoleID.NOSTRADAMUS || actor.currentRole === RoleID.NOSTRADAMUS || (actor as any).copiedRole === RoleID.NOSTRADAMUS) {
       const targets = [payload.targetPlayerId, payload.secondTargetPlayerId, payload.thirdTargetPlayerId].filter(t => t);
       if (targets.length > 0) {
           const lastTargetId = targets[targets.length - 1]!;
@@ -1076,13 +1076,13 @@ export const finalizeGame = async (gameId: string) => {
    }
    
    // NOSTRADAMUS WIN/LOSS CHECK
-   const nostradamus = players.find(p => p.originalRole === RoleID.NOSTRADAMUS);
-   if (nostradamus) {
-       const died = eliminatedIds.includes(nostradamus.id);
+   const nostradamuses = players.filter(p => p.originalRole === RoleID.NOSTRADAMUS || ((p.originalRole === RoleID.DOPPELGANGER || p.originalRole === RoleID.COPYCAT) && p.currentRole === RoleID.NOSTRADAMUS));
+   nostradamuses.forEach(nostra => {
+       const died = eliminatedIds.includes(nostra.id);
        if (died) {
            winnerDescription += " (Nostradamus Died & Lost)";
        }
-   }
+   });
 
    // MORTICIAN WIN CHECK (additive — wins in addition to other teams)
    const mortician = players.find(p => p.currentRole === RoleID.MORTICIAN);

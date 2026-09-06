@@ -468,7 +468,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
     case RoleID.GREMLIN: maxPlayers = 2; actionBtnText = "SWAP CARDS"; break;
     case RoleID.EXPOSER: maxCenter = 1; actionBtnText = "REVEAL"; break;
     case RoleID.THING: maxPlayers = 1; actionBtnText = "TAP"; break;
-    case RoleID.NOSTRADAMUS: maxPlayers = 3; actionBtnText = "VIEW FUTURE"; break;
+    case RoleID.NOSTRADAMUS: maxPlayers = 2; actionBtnText = "VIEW FUTURE"; break;
     case RoleID.VILLAGE_IDIOT: maxPlayers = 0; actionBtnText = "ROTATE"; break;
     case RoleID.SQUIRE: maxPlayers = 0; actionBtnText = "CONTINUE"; break; 
     case RoleID.BEHOLDER: maxPlayers = 0; actionBtnText = "CONTINUE"; break;
