@@ -196,7 +196,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                             ${ROLE_METADATA[p.currentRole]?.team === Team.GOOD ? 'text-good' : 
                               ROLE_METADATA[p.currentRole]?.team === Team.EVIL ? 'text-evil' : 'text-independent'}
                          `}>
-                             <RoleIcon role={p.currentRole} className="w-4 h-4 sm:w-5 sm:h-5" />
+                             <RoleIcon role={p.currentRole} className="w-5 h-5 sm:w-6 sm:h-6" />
                              {ROLE_METADATA[p.currentRole]?.name}
                          </div>
                      </div>

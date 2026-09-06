@@ -34,15 +34,15 @@ const RoleCard: React.FC<Props> = ({
   const artifactMeta = artifact ? ARTIFACT_METADATA[artifact as ArtifactID] : null;
   
   const sizeClasses = {
-    sm: 'w-16 h-24 text-xs',
-    md: 'w-24 h-32 sm:w-28 sm:h-40 text-xs sm:text-sm',
-    lg: 'w-40 h-60 sm:w-48 sm:h-72 text-sm sm:text-lg'
+    sm: 'w-20 h-28 text-xs',
+    md: 'w-28 h-40 sm:w-32 sm:h-48 text-xs sm:text-sm',
+    lg: 'w-44 h-64 sm:w-52 sm:h-76 text-sm sm:text-base'
   };
   
   const iconClasses = {
-    sm: 'w-12 h-12',
-    md: 'w-16 h-16 sm:w-20 sm:h-20',
-    lg: 'w-24 h-24 sm:w-32 sm:h-32'
+    sm: 'w-full h-full max-h-[64px]',
+    md: 'w-full h-full max-h-[96px] sm:max-h-[125px]',
+    lg: 'w-full h-full max-h-[160px] sm:max-h-[200px]'
   };
 
   const teamBorderColor = {
@@ -119,12 +119,14 @@ const RoleCard: React.FC<Props> = ({
       }}
     >
       {noiseOverlay}
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center h-full z-10">
-        <div className="mb-2 drop-shadow-md transition-transform duration-300 hover:scale-110">
-          <RoleIcon role={role} className={iconClasses[size]} />
+      <div className="absolute inset-0 flex flex-col items-center justify-between p-2 text-center h-full z-10 overflow-hidden">
+        <div className="w-full flex-1 min-h-0 flex items-center justify-center p-0.5 transition-transform duration-300 hover:scale-105">
+          <RoleIcon role={role} className={`${iconClasses[size]} object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)]`} />
         </div>
-        <div className="font-bold uppercase tracking-wider text-moon mb-2 leading-tight font-display" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{metadata.name}</div>
-        {size === 'lg' && <p className="text-gray-400 text-xs mt-2 px-2">{metadata.description}</p>}
+        <div className="w-full py-1 px-1 bg-black/60 backdrop-blur-xs rounded-lg border border-white/5 shrink-0">
+          <div className="font-bold uppercase tracking-wider text-white leading-tight font-display text-[10px] sm:text-xs line-clamp-1 drop-shadow-md">{metadata.name}</div>
+        </div>
+        {size === 'lg' && metadata.description && <p className="text-gray-300 text-[10px] sm:text-xs mt-1 px-1 line-clamp-2">{metadata.description}</p>}
         <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ${teamDotColor}`} style={{ boxShadow: `0 0 6px ${teamBorderColor}66` }}></div>
       </div>
       <div className="absolute inset-0 opacity-[0.06] pointer-events-none">
@@ -241,19 +243,21 @@ const RoleCard: React.FC<Props> = ({
 
       {noiseOverlay}
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center h-full z-10">
+      <div className="absolute inset-0 flex flex-col items-center justify-between p-2 text-center h-full z-10 overflow-hidden">
         {revealed ? (
           <>
-             <div className="mb-2 drop-shadow-md transition-transform duration-300 hover:scale-110">
-                <RoleIcon role={role} className={iconClasses[size]} />
+             <div className="w-full flex-1 min-h-0 flex items-center justify-center p-0.5 transition-transform duration-300 hover:scale-105">
+                <RoleIcon role={role} className={`${iconClasses[size]} object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)]`} />
              </div>
-             <div className="font-bold uppercase tracking-wider text-moon mb-2 leading-tight font-display" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{metadata.name}</div>
-             {size === 'lg' && <p className="text-gray-400 text-xs mt-2 px-2">{metadata.description}</p>}
+             <div className="w-full py-1 px-1 bg-black/60 backdrop-blur-xs rounded-lg border border-white/5 shrink-0">
+                <div className="font-bold uppercase tracking-wider text-white leading-tight font-display text-[10px] sm:text-xs line-clamp-1 drop-shadow-md">{metadata.name}</div>
+             </div>
+             {size === 'lg' && metadata.description && <p className="text-gray-300 text-[10px] sm:text-xs mt-1 px-1 line-clamp-2">{metadata.description}</p>}
              <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ${teamDotColor}`} style={{ boxShadow: `0 0 6px ${teamBorderColor}66` }}></div>
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center opacity-30">
-             <svg viewBox="0 0 40 50" className={size === 'sm' ? 'w-6 h-8' : size === 'md' ? 'w-8 h-10' : 'w-16 h-20'} fill="none" stroke="#12b886" strokeWidth="1.5" strokeLinecap="round">
+             <svg viewBox="0 0 40 50" className={size === 'sm' ? 'w-6 h-8' : size === 'md' ? 'w-10 h-12' : 'w-16 h-20'} fill="none" stroke="#12b886" strokeWidth="1.5" strokeLinecap="round">
                <path d="M10 5 L8 20 L6 35" opacity="0.7" />
                <path d="M18 3 L16 22 L15 40" opacity="0.8" />
                <path d="M26 6 L25 18 L23 32" opacity="0.6" />

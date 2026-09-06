@@ -7,7 +7,7 @@ import RoleIcon from '../components/RoleIcons';
 import RolesInfoButton from '../components/RolesInfoButton';
 import SeatingButton from '../components/SeatingButton';
 import { ROLE_METADATA } from '../constants';
-import { ARTIFACT_METADATA, ArtifactID } from '../constants/artifacts';
+import { ARTIFACT_METADATA, ArtifactID, DEFAULT_CURATOR_ARTIFACTS } from '../constants/artifacts';
 import ArtifactsInfoModal from '../components/ArtifactsInfoModal';
 
 interface Props {
@@ -49,6 +49,15 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
   const myArtifact = me.artifact as ArtifactID | undefined;
   const myArtifactMeta = myArtifact ? ARTIFACT_METADATA[myArtifact] : null;
   const myRoleMeta = ROLE_METADATA[me.currentRole];
+
+  // Artifact tokens selected for play in this specific game
+  const selectedPool = (game.curatorArtifacts && game.curatorArtifacts.length > 0)
+    ? game.curatorArtifacts
+    : DEFAULT_CURATOR_ARTIFACTS;
+  const gameArtifactIds: string[] = Array.from(new Set([
+    ...selectedPool,
+    ...Object.values(game.players).map(p => p.artifact).filter((a): a is string => Boolean(a))
+  ]));
 
   // Particle generation
   const particles = Array.from({ length: 20 }).map((_, i) => ({
@@ -181,7 +190,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                           type="button"
                           onClick={() => { setSelectedArtifactForModal(null); setShowArtifactModal(true); }}
                           className="w-4 h-4 rounded-full bg-amber-400 text-black flex items-center justify-center text-[10px] font-bold hover:scale-110 transition-transform ml-1"
-                          title="View all artifact token rules"
+                          title="View artifact token rules for this game"
                       >
                           i
                       </button>
@@ -227,17 +236,6 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                                               <span className="text-xs font-bold text-amber-200">
                                                   {meta?.name}
                                               </span>
-                                              <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                      setSelectedArtifactForModal(artId);
-                                                      setShowArtifactModal(true);
-                                                  }}
-                                                  className="w-3.5 h-3.5 rounded-full bg-amber-400 text-black flex items-center justify-center text-[9px] font-bold hover:scale-110 ml-0.5"
-                                                  title="View Token Details"
-                                              >
-                                                  i
-                                              </button>
                                           </div>
                                       ) : (
                                           <span className="text-xs text-amber-200/60 font-mono mt-0.5">
@@ -334,6 +332,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
           {showArtifactModal && (
               <ArtifactsInfoModal
                   selectedArtifact={selectedArtifactForModal}
+                  allowedArtifactIds={gameArtifactIds}
                   onClose={() => { setShowArtifactModal(false); setSelectedArtifactForModal(null); }}
               />
           )}

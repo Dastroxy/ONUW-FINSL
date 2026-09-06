@@ -21,15 +21,20 @@ const NightCard: React.FC<{
     id: string, label: string, role?: RoleID, isCenter?: boolean, 
     isSelected: boolean, isRevealed: boolean, isSwapping: boolean, isShielded?: boolean, hasArtifact?: boolean,
     onClick: () => void, disabled: boolean, innerRef?: React.Ref<HTMLButtonElement>, style?: React.CSSProperties,
-    className?: string
+    className?: string, swapBadge?: string, badgeColor?: 'primary' | 'red' | 'purple' | 'amber'
 }> = ({ 
-    id, label, role, isCenter, isSelected, isRevealed, isSwapping, isShielded, hasArtifact, onClick, disabled, innerRef, style, className 
+    id, label, role, isCenter, isSelected, isRevealed, isSwapping, isShielded, hasArtifact, onClick, disabled, innerRef, style, className,
+    swapBadge, badgeColor
 }) => {
     const revealedRole = isRevealed && role ? role : null;
     const meta = revealedRole ? ROLE_METADATA[revealedRole] : null;
 
-    // Special rotation for Alpha Wolf Center Card
+    // Special styling for Alpha Wolf Center Card
     const isAlphaCenter = id === 'center-alpha';
+
+    const swapAnimClass = style 
+        ? (badgeColor === 'red' || isAlphaCenter ? 'wolf-swapping' : badgeColor === 'purple' ? 'witch-swapping' : 'troublemaker-card')
+        : isSwapping ? 'animate-swap' : '';
 
     return (
         <div className="flex flex-col items-center relative group-container">
@@ -39,14 +44,18 @@ const NightCard: React.FC<{
               disabled={disabled}
               style={style}
               className={`
-                  relative w-24 h-36 sm:w-28 sm:h-40 rounded-xl transition-all duration-300 transform-style-3d cursor-pointer group
+                  relative w-24 h-38 sm:w-28 sm:h-44 rounded-xl transition-all duration-300 transform-style-3d cursor-pointer group
                   ${isSelected 
-                      ? 'ring-3 sm:ring-4 ring-primary scale-105 -translate-y-1 sm:-translate-y-2 z-10 shadow-[0_0_20px_rgba(18,184,134,0.5)]' 
+                      ? (badgeColor === 'red'
+                          ? 'ring-3 sm:ring-4 ring-red-500 scale-105 -translate-y-1 sm:-translate-y-2 z-10 shadow-[0_0_25px_rgba(239,68,68,0.7)]'
+                          : badgeColor === 'purple'
+                          ? 'ring-3 sm:ring-4 ring-purple-500 scale-105 -translate-y-1 sm:-translate-y-2 z-10 shadow-[0_0_25px_rgba(168,85,247,0.7)]'
+                          : 'ring-3 sm:ring-4 ring-primary scale-105 -translate-y-1 sm:-translate-y-2 z-10 shadow-[0_0_20px_rgba(18,184,134,0.5)]')
                       : 'scale-100 hover:scale-105 z-0'
                   }
-                  ${style ? 'troublemaker-card' : isSwapping ? 'animate-swap' : ''}
+                  ${swapAnimClass}
                   ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-                  ${isAlphaCenter ? 'rotate-90 scale-90 border-2 border-red-500' : ''}
+                  ${isAlphaCenter ? 'border-2 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : ''}
                   ${className || ''}
               `}
           >
@@ -59,6 +68,19 @@ const NightCard: React.FC<{
               {hasArtifact && (
                    <div key={`artifact-${id}`} className="absolute -top-2 -left-2 z-30 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500/30 border border-amber-400 flex items-center justify-center text-xs sm:text-sm shadow-[0_0_15px_rgba(245,158,11,0.6)] backdrop-blur-md animate-fade-in" title="Artifact Token">🏺</div>
               )}
+
+              {/* Swap Feedback Badge */}
+              {swapBadge && (
+                  <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-lg whitespace-nowrap animate-bounce ${
+                      badgeColor === 'red'
+                          ? 'bg-red-600 text-white border border-red-300 shadow-[0_0_12px_rgba(239,68,68,0.8)]'
+                          : badgeColor === 'purple'
+                          ? 'bg-purple-600 text-white border border-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.8)]'
+                          : 'bg-primary text-white border border-primary-light shadow-[0_0_12px_rgba(18,184,134,0.8)]'
+                  }`}>
+                      {swapBadge}
+                  </div>
+              )}
               
               <div className={`
                   w-full h-full relative transition-transform duration-700 transform-style-3d
@@ -67,18 +89,31 @@ const NightCard: React.FC<{
                   {/* FRONT (Hidden State) */}
                   <div className="absolute inset-0 backface-hidden bg-[#0c0e1a] border-2 border-[#2a2545] rounded-xl flex items-center justify-center shadow-lg" style={{ boxShadow: 'inset 0 1px 0 rgba(220,245,235,0.04), 0 0 8px rgba(0,0,0,0.5)' }}>
                       <span className="text-3xl sm:text-4xl font-display text-[#3a3555] font-bold opacity-60">?</span>
-                      {isSelected && <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-xs text-white">✓</div>}
+                      {isSelected && (
+                          <div className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs text-white shadow-md ${
+                              badgeColor === 'red' ? 'bg-red-600' : badgeColor === 'purple' ? 'bg-purple-600' : 'bg-primary'
+                          }`}>✓</div>
+                      )}
                   </div>
 
                   {/* BACK (Revealed State) */}
                   <div className={`
-                      absolute inset-0 backface-hidden rotate-y-180 rounded-xl bg-[#0e0f1a] border-2 flex flex-col items-center justify-center p-2 shadow-xl
+                      absolute inset-0 backface-hidden rotate-y-180 rounded-xl bg-[#0e0f1a] border-2 flex flex-col items-center justify-between p-1.5 sm:p-2 shadow-xl overflow-hidden
                       ${meta?.team === Team.GOOD ? 'border-good shadow-good/20' : meta?.team === Team.EVIL ? 'border-evil shadow-evil/20' : 'border-independent shadow-independent/20'}
                   `}>
                       {meta && (
                           <>
-                              <RoleIcon role={revealedRole!} className="w-12 h-12 sm:w-16 sm:h-16 mb-1" />
-                              <span className="text-xs sm:text-sm font-bold text-center leading-tight text-white line-clamp-1">{meta.name}</span>
+                              <div className="w-full flex-1 min-h-0 flex items-center justify-center p-0.5 overflow-hidden">
+                                  <RoleIcon 
+                                      role={revealedRole!} 
+                                      className="w-full h-full max-h-[96px] sm:max-h-[118px] object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)] transition-transform duration-300 group-hover:scale-105" 
+                                  />
+                              </div>
+                              <div className="w-full py-0.5 px-1 bg-black/50 backdrop-blur-xs rounded-lg border border-white/5 shrink-0 text-center">
+                                  <span className="text-[11px] sm:text-xs font-display font-black text-center leading-tight text-white line-clamp-1 uppercase tracking-wider drop-shadow-md">
+                                      {meta.name}
+                                  </span>
+                              </div>
                           </>
                       )}
                   </div>
@@ -87,7 +122,7 @@ const NightCard: React.FC<{
           <span 
               className={`
                   relative z-20 mt-2 font-bold transition-colors text-center truncate max-w-[90px] sm:max-w-[110px] text-xs sm:text-sm
-                  ${isSelected ? 'text-primary' : 'text-gray-200'}
+                  ${isSelected ? (badgeColor === 'red' ? 'text-red-400 font-extrabold' : badgeColor === 'purple' ? 'text-purple-400 font-extrabold' : 'text-primary') : 'text-gray-200'}
               `}
               style={{
                   lineHeight: '1.2',
@@ -143,6 +178,10 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   const [tmStyles, setTmStyles] = useState<Record<string, React.CSSProperties>>({});
   const itemsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
 
+  // Swapped target confirmation state (for Witch, Alpha Wolf, etc.)
+  const [swappedPlayerId, setSwappedPlayerId] = useState<string | null>(null);
+  const [swappedPlayerName, setSwappedPlayerName] = useState<string | null>(null);
+
   // Insomniac specific ref
   const autoRevealed = useRef(false);
 
@@ -157,6 +196,8 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
     setSelectedCenter([]);
     setRevealedIds({});
     setSwappingIds([]);
+    setSwappedPlayerId(null);
+    setSwappedPlayerName(null);
     setInfoMessage('');
     setRobberState('IDLE');
     setRobberNewRole(null);
@@ -474,7 +515,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
   const handlePlayerClick = async (pid: string) => {
       if (step !== 'SELECTING') return;
-      if (pid === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN, RoleID.CURATOR].includes(activeRoleID)) return; 
+      if (pid === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN, RoleID.CURATOR, RoleID.WITCH].includes(activeRoleID)) return; 
       
       const targetPlayer = game.players[pid];
       
@@ -522,9 +563,35 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
       // ALPHA WOLF SPECIAL LOGIC
       if (activeRoleID === RoleID.ALPHA_WOLF) {
+          if (step !== 'SELECTING') return;
+
+          const centerAlphaId = 'center-alpha';
+          const targetName = targetPlayer ? targetPlayer.name : 'Player';
+
+          setSelectedPlayers([pid]);
+          setSwappedPlayerId(pid);
+          setSwappedPlayerName(targetName);
+          setSwappingIds([centerAlphaId, pid]);
+          setInfoMessage(`Exchanged with ${targetName}`);
+
+          const node1 = itemsRef.current.get(centerAlphaId);
+          const node2 = itemsRef.current.get(pid);
+
+          if (node1 && node2) {
+              const r1 = node1.getBoundingClientRect();
+              const r2 = node2.getBoundingClientRect();
+              const tx1 = r2.left - r1.left;
+              const ty1 = r2.top - r1.top;
+              const tx2 = r1.left - r2.left;
+              const ty2 = r1.top - r2.top;
+
+              setTmStyles({
+                  [centerAlphaId]: { '--tx': `${tx1}px`, '--ty': `${ty1}px` } as React.CSSProperties,
+                  [pid]: { '--tx': `${tx2}px`, '--ty': `${ty2}px` } as React.CSSProperties
+              });
+          }
+
           setStep('ANIMATING');
-          setSwappingIds(['center-alpha', pid]);
-          setInfoMessage("Exchanged with Center Wolf");
 
           requestAnimationFrame(async () => {
               await performNightAction(game.id, {
@@ -536,6 +603,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
           setTimeout(() => {
               setStep('FINISHED');
+              setTmStyles({});
           }, 800);
           return;
       }
@@ -576,43 +644,49 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           if (!witchState.centerId) return; // Must view center first
           if (witchState.swapped) return; 
 
-          // Animation & Action
           const centerId = witchState.centerId;
+          const targetName = targetPlayer ? targetPlayer.name : 'Player';
+
+          setSelectedPlayers([pid]);
+          setSwappedPlayerId(pid);
+          setSwappedPlayerName(targetName);
+          setSwappingIds([centerId, pid]);
+          setWitchState(prev => ({ ...prev, swapped: true }));
+          setInfoMessage(`Swapped with ${targetName}`);
+
+          // Animation & Action
           const node1 = itemsRef.current.get(centerId);
           const node2 = itemsRef.current.get(pid);
           
           if (node1 && node2) {
-               const r1 = node1.getBoundingClientRect();
-               const r2 = node2.getBoundingClientRect();
-               const tx1 = r2.left - r1.left;
-               const ty1 = r2.top - r1.top;
-               const tx2 = r1.left - r2.left;
-               const ty2 = r1.top - r2.top;
+              const r1 = node1.getBoundingClientRect();
+              const r2 = node2.getBoundingClientRect();
+              const tx1 = r2.left - r1.left;
+              const ty1 = r2.top - r1.top;
+              const tx2 = r1.left - r2.left;
+              const ty2 = r1.top - r2.top;
 
               setTmStyles({
                   [centerId]: { '--tx': `${tx1}px`, '--ty': `${ty1}px` } as React.CSSProperties,
                   [pid]: { '--tx': `${tx2}px`, '--ty': `${ty2}px` } as React.CSSProperties
               });
-              setStep('ANIMATING');
-              
-              requestAnimationFrame(async () => {
-                  await performNightAction(game.id, {
-                      actorId: me.id,
-                      actionType: 'SWAP',
-                      targetCenterId: centerId,
-                      targetPlayerId: pid
-                  });
-              });
-              
-              setInfoMessage("Swapped!");
-              setSwappingIds([centerId, pid]);
-              setWitchState(prev => ({ ...prev, swapped: true }));
-              
-              setTimeout(() => {
-                  setStep('FINISHED');
-                  setTmStyles({});
-              }, 800);
           }
+
+          setStep('ANIMATING');
+          
+          requestAnimationFrame(async () => {
+              await performNightAction(game.id, {
+                  actorId: me.id,
+                  actionType: 'SWAP',
+                  targetCenterId: centerId,
+                  targetPlayerId: pid
+              });
+          });
+          
+          setTimeout(() => {
+              setStep('FINISHED');
+              setTmStyles({});
+          }, 800);
           return;
       }
 
@@ -1155,8 +1229,10 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
   // WITCH HEADER UPDATES
   if (activeRoleID === RoleID.WITCH) {
-      if (witchState.swapped) {
-          headerDesc = "Card swapped! Waiting to finish...";
+      if (witchState.swapped || swappedPlayerId) {
+          const targetName = swappedPlayerName || (swappedPlayerId && game.players[swappedPlayerId]?.name) || "player";
+          const centerRoleName = witchState.centerRole ? ROLE_METADATA[witchState.centerRole].name : "Center Card";
+          headerDesc = `Swapped ${targetName}'s card with the center ${centerRoleName}!`;
       } else if (witchState.centerId) {
           const centerRoleName = witchState.centerRole ? ROLE_METADATA[witchState.centerRole].name : "Card";
           headerDesc = `You found ${centerRoleName}. Tap a player to SWAP it with.`;
@@ -1180,7 +1256,12 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   // ALPHA WOLF HEADER
   if (activeRoleID === RoleID.ALPHA_WOLF) {
       headerTitle = "PERPENDICULAR WEREWOLF 🐺";
-      headerDesc = "Tap a player to exchange with the center Wolf card.";
+      if (step === 'FINISHED' || swappedPlayerId) {
+          const targetName = swappedPlayerName || (swappedPlayerId && game.players[swappedPlayerId]?.name) || "player";
+          headerDesc = `Exchanged ${targetName}'s card with the Center Werewolf card!`;
+      } else {
+          headerDesc = "Tap a player to exchange with the center Wolf card.";
+      }
   }
 
   if (isSquire) {
@@ -1356,6 +1437,28 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                 animation: troublemaker-swap 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
             }
 
+            @keyframes wolf-swap-glow {
+                0%, 100% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.8), 0 0 50px rgba(239, 68, 68, 0.4); border-color: #ef4444 !important; }
+                50% { box-shadow: 0 0 45px rgba(239, 68, 68, 1), 0 0 70px rgba(239, 68, 68, 0.6); border-color: #f87171 !important; }
+            }
+            .wolf-swapping {
+                will-change: transform;
+                backface-visibility: hidden;
+                animation: troublemaker-swap 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards, wolf-swap-glow 0.8s ease-in-out infinite;
+                z-index: 120 !important;
+            }
+
+            @keyframes witch-swap-glow {
+                0%, 100% { box-shadow: 0 0 25px rgba(168, 85, 247, 0.8), 0 0 50px rgba(168, 85, 247, 0.4); border-color: #a855f7 !important; }
+                50% { box-shadow: 0 0 45px rgba(168, 85, 247, 1), 0 0 70px rgba(168, 85, 247, 0.6); border-color: #c084fc !important; }
+            }
+            .witch-swapping {
+                will-change: transform;
+                backface-visibility: hidden;
+                animation: troublemaker-swap 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards, witch-swap-glow 0.8s ease-in-out infinite;
+                z-index: 120 !important;
+            }
+
             /* NEW SHIELD STYLES */
             .shield-token {
                 position: absolute;
@@ -1458,8 +1561,10 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
               {/* Center Cards Section - NOW INCLUDES ALPHA WOLF */}
               {(maxCenter > 0 || activeRoleID === RoleID.ALPHA_WOLF) && !isSquire && !isBeholder && activeRoleID !== RoleID.NOSTRADAMUS && !isInsomniac && activeRoleID !== RoleID.PARANORMAL_INVESTIGATOR && activeRoleID !== RoleID.WITCH && (
-                  <div className="mb-8 w-full">
+                  <div className="mb-8 w-full flex flex-col items-center">
                       <p className="text-[10px] text-center text-gray-500 uppercase tracking-widest mb-3">Center Cards</p>
+                      
+                      {/* Standard 3 Center Cards */}
                       <div className="flex justify-center items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap px-1">
                           {standardCenterCards.map(c => (
                               <NightCard 
@@ -1471,43 +1576,66 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                                 style={tmStyles[c.id]}
                               />
                           ))}
-
-                          {/* ALPHA WOLF PERPENDICULAR CARD */}
-                          {activeRoleID === RoleID.ALPHA_WOLF && alphaCenterCard && (
-                              <div className="ml-3 sm:ml-6 border-l border-white/10 pl-3 sm:pl-6">
-                                <NightCard 
-                                    key={`${alphaCenterCard.id}-${alphaCenterCard.role}`}
-                                    id={alphaCenterCard.id} label="Alpha Wolf" role={alphaCenterCard.role} isCenter={true}
-                                    isSelected={false} isRevealed={step === 'SELECTING'} isSwapping={swappingIds.includes(alphaCenterCard.id)}
-                                    disabled={true} 
-                                    onClick={() => {}}
-                                    innerRef={(el) => { if (el) itemsRef.current.set(alphaCenterCard.id, el); }}
-                                    style={tmStyles[alphaCenterCard.id]}
-                                />
-                              </div>
-                          )}
                       </div>
+
+                      {/* ALPHA WOLF 4TH CARD - CLEANLY DISPLAYED BELOW THE 3 CENTER CARDS */}
+                      {activeRoleID === RoleID.ALPHA_WOLF && alphaCenterCard && (
+                          <div className="mt-5 flex flex-col items-center animate-fade-in">
+                              <div className="flex items-center gap-1.5 mb-2 px-3 py-1 rounded-full bg-red-950/60 border border-red-500/40 shadow-sm">
+                                  <span className="text-red-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                      <span>🐺</span> Alpha Wolf Center Card
+                                  </span>
+                              </div>
+                              <NightCard 
+                                  key={`${alphaCenterCard.id}-${alphaCenterCard.role}`}
+                                  id={alphaCenterCard.id} 
+                                  label={swappedPlayerName ? `Exchanged with ${swappedPlayerName}` : "Center Wolf"} 
+                                  role={alphaCenterCard.role} 
+                                  isCenter={true}
+                                  isSelected={swappingIds.includes(alphaCenterCard.id) || !!swappedPlayerId} 
+                                  isRevealed={true} 
+                                  isSwapping={swappingIds.includes(alphaCenterCard.id)}
+                                  disabled={true} 
+                                  onClick={() => {}}
+                                  innerRef={(el) => { if (el) itemsRef.current.set(alphaCenterCard.id, el); }}
+                                  style={tmStyles[alphaCenterCard.id]}
+                                  swapBadge={swappedPlayerId ? "EXCHANGED" : undefined}
+                                  badgeColor="red"
+                                  className={swappedPlayerId ? "!border-red-500 !ring-4 !ring-red-500/80 !shadow-[0_0_25px_rgba(239,68,68,0.7)]" : "!border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.3)]"}
+                              />
+                          </div>
+                      )}
                   </div>
               )}
               
-              {/* WITCH CENTER CARDS (With special selection logic) */}
+              {/* WITCH CENTER CARDS (With special selection and swap indication) */}
               {activeRoleID === RoleID.WITCH && (
-                  <div className="mb-8 w-full">
+                  <div className="mb-8 w-full flex flex-col items-center">
                       <p className="text-[10px] text-center text-gray-500 uppercase tracking-widest mb-3">Center Cards</p>
                       <div className="flex justify-center items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap px-1">
-                          {standardCenterCards.map(c => (
-                              <NightCard 
-                                key={`${c.id}-witch`}
-                                id={c.id} label="Center" role={revealedIds[c.id] || c.role} isCenter={true}
-                                isSelected={witchState.centerId === c.id} 
-                                isRevealed={witchState.centerId === c.id} 
-                                isSwapping={swappingIds.includes(c.id)}
-                                disabled={step === 'FINISHED' || (!!witchState.centerId && witchState.centerId !== c.id)} 
-                                onClick={() => handleCenterClick(c.id)}
-                                innerRef={(el) => { if (el) itemsRef.current.set(c.id, el); }}
-                                style={tmStyles[c.id]}
-                              />
-                          ))}
+                          {standardCenterCards.map(c => {
+                              const isChosenCenter = witchState.centerId === c.id;
+                              const isSwapped = (witchState.swapped || !!swappedPlayerId) && isChosenCenter;
+                              return (
+                                  <NightCard 
+                                    key={`${c.id}-witch`}
+                                    id={c.id} 
+                                    label={isSwapped && swappedPlayerName ? `Swapped with ${swappedPlayerName}` : "Center"} 
+                                    role={revealedIds[c.id] || c.role} 
+                                    isCenter={true}
+                                    isSelected={isChosenCenter} 
+                                    isRevealed={isChosenCenter} 
+                                    isSwapping={swappingIds.includes(c.id)}
+                                    disabled={step === 'FINISHED' || (!!witchState.centerId && !isChosenCenter)} 
+                                    onClick={() => handleCenterClick(c.id)}
+                                    innerRef={(el) => { if (el) itemsRef.current.set(c.id, el); }}
+                                    style={tmStyles[c.id]}
+                                    swapBadge={isSwapped ? "SWAPPED" : undefined}
+                                    badgeColor="purple"
+                                    className={isSwapped ? "!border-purple-500 !ring-4 !ring-purple-500/80 !shadow-[0_0_25px_rgba(168,85,247,0.7)]" : isChosenCenter ? "!border-purple-400 !ring-2 !ring-purple-400/60" : ""}
+                                  />
+                              );
+                          })}
                       </div>
                   </div>
               )}
@@ -1571,6 +1699,44 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                 </div>
               )}
 
+              {/* Confirmation Banner for Witch and Alpha Wolf */}
+              {(witchState.swapped || (activeRoleID === RoleID.ALPHA_WOLF && step === 'FINISHED') || !!swappedPlayerId) && (
+                  <div className="w-full max-w-md mx-auto mb-4 animate-fade-in">
+                      {activeRoleID === RoleID.WITCH && (
+                          <div className="bg-purple-950/40 border-2 border-purple-500/60 p-3 sm:p-4 rounded-2xl shadow-[0_0_25px_rgba(168,85,247,0.3)] flex items-center gap-3 backdrop-blur-md">
+                              <div className="w-10 h-10 rounded-full bg-purple-500/20 border border-purple-400 flex items-center justify-center text-xl shrink-0">
+                                  🧙‍♀️
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                  <div className="text-[11px] font-black text-purple-300 uppercase tracking-wider">Swap Confirmed</div>
+                                  <p className="text-sm font-bold text-white truncate">
+                                      Swapped with <span className="text-purple-300 underline underline-offset-2">{swappedPlayerName || (swappedPlayerId && game.players[swappedPlayerId]?.name) || "Player"}</span>
+                                  </p>
+                              </div>
+                              <span className="text-xs font-black px-2.5 py-1 rounded-full bg-purple-500/30 text-purple-200 border border-purple-400/40 shrink-0 animate-pulse">
+                                  COMPLETE
+                              </span>
+                          </div>
+                      )}
+                      {activeRoleID === RoleID.ALPHA_WOLF && (
+                          <div className="bg-red-950/40 border-2 border-red-500/60 p-3 sm:p-4 rounded-2xl shadow-[0_0_25px_rgba(239,68,68,0.3)] flex items-center gap-3 backdrop-blur-md">
+                              <div className="w-10 h-10 rounded-full bg-red-500/20 border border-red-400 flex items-center justify-center text-xl shrink-0">
+                                  🐺
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                  <div className="text-[11px] font-black text-red-300 uppercase tracking-wider">Wolf Exchange Confirmed</div>
+                                  <p className="text-sm font-bold text-white truncate">
+                                      Gave Werewolf card to <span className="text-red-300 underline underline-offset-2">{swappedPlayerName || (swappedPlayerId && game.players[swappedPlayerId]?.name) || "Player"}</span>
+                                  </p>
+                              </div>
+                              <span className="text-xs font-black px-2.5 py-1 rounded-full bg-red-500/30 text-red-200 border border-red-400/40 shrink-0 animate-pulse">
+                                  WOLF CREATED
+                              </span>
+                          </div>
+                      )}
+                  </div>
+              )}
+
               {((maxPlayers > 0 || activeRoleID === RoleID.NOSTRADAMUS) || (isSquire && squireEvilPlayers.length > 0) || isInsomniac || activeRoleID === RoleID.PARANORMAL_INVESTIGATOR || (activeRoleID === RoleID.WITCH && witchState.centerId) || activeRoleID === RoleID.VILLAGE_IDIOT || activeRoleID === RoleID.ALPHA_WOLF) && (
                   <div className={`w-full max-w-lg mt-4 ${isSquire ? 'p-4 rounded-3xl bg-red-900/10 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]' : ''}`}>
                       {!isInsomniac && <p className="text-[10px] text-center text-gray-500 uppercase tracking-widest mb-3">Players</p>}
@@ -1582,19 +1748,46 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                               // Visual check: Show artifact token if DB says so, OR if Curator just selected them with a token chosen
                               const showArtifact = !!p.artifact || (activeRoleID === RoleID.CURATOR && selectedPlayers.includes(p.id) && !!selectedArtifactToken);
 
+                              const isSwappedTarget = swappedPlayerId === p.id;
+                              const isSelected = selectedPlayers.includes(p.id) || isSwappedTarget;
+
+                              const isWitchActive = activeRoleID === RoleID.WITCH;
+                              const isAlphaActive = activeRoleID === RoleID.ALPHA_WOLF;
+
+                              const badgeColor = (isAlphaActive || (isSwappedTarget && isAlphaActive))
+                                  ? 'red' 
+                                  : (isWitchActive || (isSwappedTarget && isWitchActive)) 
+                                  ? 'purple' 
+                                  : undefined;
+
+                              const swapBadge = isSwappedTarget 
+                                  ? (isAlphaActive ? '🐺 WEREWOLF' : '🔄 SWAPPED')
+                                  : undefined;
+
+                              const customClass = isSwappedTarget
+                                  ? (isAlphaActive
+                                      ? "!ring-4 !ring-red-500 !border-red-500 !shadow-[0_0_25px_rgba(239,68,68,0.7)] scale-105"
+                                      : "!ring-4 !ring-purple-500 !border-purple-500 !shadow-[0_0_25px_rgba(168,85,247,0.7)] scale-105")
+                                  : isAlphaActive && p.id !== me.id
+                                  ? "hover:ring-2 hover:ring-red-500 hover:shadow-[0_0_15px_rgba(239,68,68,0.5)]"
+                                  : isWitchActive && witchState.centerId && !witchState.swapped
+                                  ? "hover:ring-2 hover:ring-purple-500 hover:shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                                  : "";
+
                               return (
                                   <NightCard 
                                     key={p.id}
                                     id={p.id} label={p.name} role={roleToReveal}
-                                    isSelected={selectedPlayers.includes(p.id)} isRevealed={!!revealedIds[p.id]} isSwapping={swappingIds.includes(p.id)}
+                                    isSelected={isSelected} isRevealed={!!revealedIds[p.id]} isSwapping={swappingIds.includes(p.id)}
                                     isShielded={showShield}
                                     hasArtifact={showArtifact}
-                                    disabled={step === 'FINISHED' || (p.id === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN, RoleID.CURATOR].includes(activeRoleID)) || activeRoleID === RoleID.VILLAGE_IDIOT || (activeRoleID === RoleID.CURATOR && !!p.artifact)}
+                                    disabled={step === 'FINISHED' || (p.id === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN, RoleID.CURATOR, RoleID.WITCH].includes(activeRoleID)) || activeRoleID === RoleID.VILLAGE_IDIOT || (activeRoleID === RoleID.CURATOR && !!p.artifact)}
                                     onClick={() => handlePlayerClick(p.id)}
                                     innerRef={(el) => { if (el) itemsRef.current.set(p.id, el); }}
                                     style={tmStyles[p.id]}
-                                    // Add glow for Alpha Wolf
-                                    className={activeRoleID === RoleID.ALPHA_WOLF && p.id !== me.id ? "hover:ring-2 hover:ring-primary hover:shadow-[0_0_15px_rgba(18,184,134,0.5)]" : ""}
+                                    swapBadge={swapBadge}
+                                    badgeColor={badgeColor}
+                                    className={customClass}
                                   />
                               );
                           })}

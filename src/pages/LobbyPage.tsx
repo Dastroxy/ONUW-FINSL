@@ -232,24 +232,26 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
                                          key={r}
                                          onClick={() => toggleRole(r)}
                                          className={`
-                                             relative min-h-[108px] sm:min-h-[128px] rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden flex flex-col group
-                                             backdrop-blur-sm transform-gpu
+                                             relative h-36 sm:h-44 rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden flex flex-col group
+                                             backdrop-blur-sm transform-gpu select-none
                                              ${isSelected 
-                                                 ? 'border-primary/60 bg-primary/20 shadow-[0_0_20px_rgba(18,184,134,0.3)] ring-2 ring-primary/50' 
-                                                 : 'border-white/8 bg-white/[0.03] hover:bg-primary/10 hover:border-primary/40 hover:shadow-[0_4px_20px_rgba(18,184,134,0.15)]'}
+                                                 ? 'border-primary/70 bg-gradient-to-b from-primary/25 via-primary/10 to-black/60 shadow-[0_0_25px_rgba(18,184,134,0.35)] ring-2 ring-primary/60 scale-[1.02]' 
+                                                 : 'border-white/10 bg-gradient-to-b from-white/[0.05] via-[#120e24]/60 to-black/80 hover:bg-primary/10 hover:border-primary/40 hover:shadow-[0_4px_25px_rgba(18,184,134,0.2)] hover:scale-[1.02]'}
                                          `}
                                      >
-                                         <div className={`h-1.5 w-full ${meta.team === 'GOOD' ? 'bg-good shadow-[0_0_12px_rgba(126,184,201,0.5)]' : meta.team === 'EVIL' ? 'bg-evil shadow-[0_0_12px_rgba(185,28,28,0.5)]' : 'bg-independent shadow-[0_0_12px_rgba(212,168,71,0.5)]'}`}></div>
-                                         <div className="flex-1 flex flex-col items-center justify-center p-2 text-center relative z-10">
-                                             <div className={`mb-1.5 transition-all duration-300 ${isSelected ? 'scale-105 drop-shadow-[0_0_10px_rgba(220,245,235,0.5)]' : 'group-hover:scale-105 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'} grayscale-[0.2] group-hover:grayscale-0`}>
-                                                 <RoleIcon role={r} className="w-9 h-9 sm:w-12 sm:h-12" />
+                                         <div className={`h-1.5 w-full shrink-0 ${meta.team === 'GOOD' ? 'bg-good shadow-[0_0_12px_rgba(126,184,201,0.6)]' : meta.team === 'EVIL' ? 'bg-evil shadow-[0_0_12px_rgba(185,28,28,0.6)]' : 'bg-independent shadow-[0_0_12px_rgba(212,168,71,0.6)]'}`}></div>
+                                         <div className="flex-1 w-full min-h-0 flex items-center justify-center p-2 relative z-10 overflow-hidden">
+                                             <div className={`w-full h-full flex items-center justify-center transition-all duration-300 ${isSelected ? 'scale-105 drop-shadow-[0_4px_16px_rgba(18,184,134,0.4)]' : 'group-hover:scale-105 drop-shadow-[0_4px_14px_rgba(0,0,0,0.8)]'}`}>
+                                                 <RoleIcon role={r} className="w-full h-full max-h-[88px] sm:max-h-[110px] object-contain" />
                                              </div>
-                                             <span className={`text-[11px] sm:text-xs font-bold leading-tight uppercase tracking-wide transition-colors line-clamp-1 ${isSelected ? 'text-moon' : 'text-moon/50 group-hover:text-moon/90'}`}>
+                                         </div>
+                                         <div className="w-full px-2 py-1.5 bg-black/60 backdrop-blur-xs border-t border-white/5 relative z-10 shrink-0 text-center">
+                                             <span className={`text-[11px] sm:text-xs font-display font-black leading-tight uppercase tracking-wider transition-colors line-clamp-1 block ${isSelected ? 'text-white drop-shadow-[0_0_8px_rgba(18,184,134,0.6)]' : 'text-moon/80 group-hover:text-white'}`}>
                                                  {meta.name}
                                              </span>
                                          </div>
                                          <div className={`
-                                            absolute top-1.5 right-1.5 w-4.5 h-4.5 sm:w-5 sm:h-5 bg-primary rounded-full shadow-[0_0_10px_rgba(18,184,134,0.5)] flex items-center justify-center text-[10px] text-white transition-all duration-200
+                                            absolute top-2 right-2 z-20 w-5 h-5 sm:w-6 sm:h-6 bg-primary rounded-full shadow-[0_0_12px_rgba(18,184,134,0.7)] flex items-center justify-center text-xs font-black text-white transition-all duration-200
                                             ${isSelected ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}
                                          `}>
                                              ✓
