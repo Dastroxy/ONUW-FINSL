@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { GameState, Player } from '../types';
+import { GameState, Player, sortPlayersStably } from '../types';
 import { submitVote, finalizeGame } from '../services/firestoreService';
 import SeatingButton from '../components/SeatingButton';
 
@@ -17,7 +17,7 @@ const VotingPage: React.FC<Props> = ({ game, me }) => {
      await submitVote(game.id, me.id, voteTarget);
   };
   
-  const players = Object.values(game.players) as Player[];
+  const players = sortPlayersStably(Object.values(game.players) as Player[]);
   const totalPlayers = players.length;
   // Calculate how many people have locked in their vote
   const votesCast = players.filter(p => p.votedFor).length;
@@ -183,7 +183,7 @@ const VotingPage: React.FC<Props> = ({ game, me }) => {
                  </button>
               )}
           </div>
-          <SeatingButton players={Object.values(game.players) as Player[]} />
+          <SeatingButton players={players} />
       </div>
   );
 };

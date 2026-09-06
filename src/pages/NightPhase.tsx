@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { GameState, Player, RoleID, Team } from '../types';
+import { GameState, Player, RoleID, Team, sortPlayersStably } from '../types';
 import { performNightAction, advanceNightTurn, toggleMasonReady, COPYCAT_DEFERRED_ROLES, DOPPELGANGER_IMMEDIATE_ROLES, DOPPELGANGER_DEFERRED_ROLES } from '../services/firestoreService';
 import { ROLE_METADATA } from '../constants';
 import { ARTIFACT_METADATA, ArtifactID, DEFAULT_CURATOR_ARTIFACTS } from '../constants/artifacts';
@@ -13,6 +13,92 @@ interface Props {
   game: GameState;
   me: Player;
 }
+
+// ------------------------------------------------------------------
+// CARD COMPONENT (Top-level to prevent remounting on parent state changes)
+// ------------------------------------------------------------------
+const NightCard: React.FC<{ 
+    id: string, label: string, role?: RoleID, isCenter?: boolean, 
+    isSelected: boolean, isRevealed: boolean, isSwapping: boolean, isShielded?: boolean, hasArtifact?: boolean,
+    onClick: () => void, disabled: boolean, innerRef?: React.Ref<HTMLButtonElement>, style?: React.CSSProperties,
+    className?: string
+}> = ({ 
+    id, label, role, isCenter, isSelected, isRevealed, isSwapping, isShielded, hasArtifact, onClick, disabled, innerRef, style, className 
+}) => {
+    const revealedRole = isRevealed && role ? role : null;
+    const meta = revealedRole ? ROLE_METADATA[revealedRole] : null;
+
+    // Special rotation for Alpha Wolf Center Card
+    const isAlphaCenter = id === 'center-alpha';
+
+    return (
+        <div className="flex flex-col items-center relative group-container">
+          <button
+              ref={innerRef}
+              onClick={onClick}
+              disabled={disabled}
+              style={style}
+              className={`
+                  relative w-24 h-36 sm:w-28 sm:h-40 rounded-xl transition-all duration-300 transform-style-3d cursor-pointer group
+                  ${isSelected 
+                      ? 'ring-3 sm:ring-4 ring-primary scale-105 -translate-y-1 sm:-translate-y-2 z-10 shadow-[0_0_20px_rgba(18,184,134,0.5)]' 
+                      : 'scale-100 hover:scale-105 z-0'
+                  }
+                  ${style ? 'troublemaker-card' : isSwapping ? 'animate-swap' : ''}
+                  ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+                  ${isAlphaCenter ? 'rotate-90 scale-90 border-2 border-red-500' : ''}
+                  ${className || ''}
+              `}
+          >
+              {/* Shield Token */}
+              {isShielded && (
+                   <div key={`shield-${id}-${isShielded ? 'on' : 'off'}`} className="shield-token">🛡️</div>
+              )}
+
+              {/* Artifact Token */}
+              {hasArtifact && (
+                   <div key={`artifact-${id}`} className="absolute -top-2 -left-2 z-30 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500/30 border border-amber-400 flex items-center justify-center text-xs sm:text-sm shadow-[0_0_15px_rgba(245,158,11,0.6)] backdrop-blur-md animate-fade-in" title="Artifact Token">🏺</div>
+              )}
+              
+              <div className={`
+                  w-full h-full relative transition-transform duration-700 transform-style-3d
+                  ${isRevealed ? 'rotate-y-180' : ''}
+              `}>
+                  {/* FRONT (Hidden State) */}
+                  <div className="absolute inset-0 backface-hidden bg-[#0c0e1a] border-2 border-[#2a2545] rounded-xl flex items-center justify-center shadow-lg" style={{ boxShadow: 'inset 0 1px 0 rgba(220,245,235,0.04), 0 0 8px rgba(0,0,0,0.5)' }}>
+                      <span className="text-3xl sm:text-4xl font-display text-[#3a3555] font-bold opacity-60">?</span>
+                      {isSelected && <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-xs text-white">✓</div>}
+                  </div>
+
+                  {/* BACK (Revealed State) */}
+                  <div className={`
+                      absolute inset-0 backface-hidden rotate-y-180 rounded-xl bg-[#0e0f1a] border-2 flex flex-col items-center justify-center p-2 shadow-xl
+                      ${meta?.team === Team.GOOD ? 'border-good shadow-good/20' : meta?.team === Team.EVIL ? 'border-evil shadow-evil/20' : 'border-independent shadow-independent/20'}
+                  `}>
+                      {meta && (
+                          <>
+                              <RoleIcon role={revealedRole!} className="w-12 h-12 sm:w-16 sm:h-16 mb-1" />
+                              <span className="text-xs sm:text-sm font-bold text-center leading-tight text-white line-clamp-1">{meta.name}</span>
+                          </>
+                      )}
+                  </div>
+              </div>
+          </button>
+          <span 
+              className={`
+                  relative z-20 mt-2 font-bold transition-colors text-center truncate max-w-[90px] sm:max-w-[110px] text-xs sm:text-sm
+                  ${isSelected ? 'text-primary' : 'text-gray-200'}
+              `}
+              style={{
+                  lineHeight: '1.2',
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+              }}
+          >
+              {label}
+          </span>
+        </div>
+    );
+};
 
 const NightPhase: React.FC<Props> = ({ game, me }) => {
   const [step, setStep] = useState<'SELECTING' | 'ANIMATING' | 'FINISHED'>('SELECTING');
@@ -143,9 +229,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   // PSYCHIC LOGIC - CALCULATE RANDOM NEIGHBOR
   useEffect(() => {
     if (activeRoleID === RoleID.PSYCHIC && !psychicSeenRole) {
-        const sortedPlayers = Object.values(game.players)
-            .filter(p => p.seatId !== null)
-            .sort((a, b) => (a.seatId ?? 0) - (b.seatId ?? 0));
+        const sortedPlayers = sortPlayersStably(Object.values(game.players) as Player[]);
         
         const myIdx = sortedPlayers.findIndex(p => p.id === me.id);
         if (myIdx !== -1 && sortedPlayers.length > 1) {
@@ -299,13 +383,16 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   let maxCenter = 0;
   let actionBtnText = "CONFIRM";
 
-  const otherEvilPlayers = (Object.values(game.players) as Player[]).filter(p => 
+  // Stably sorted players list by seating/join order
+  const allPlayers = sortPlayersStably(Object.values(game.players) as Player[]);
+
+  const otherEvilPlayers = allPlayers.filter(p => 
       p.id !== me.id && 
       (ROLE_METADATA[p.currentRole].team === Team.EVIL || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && ROLE_METADATA[p.currentRole].team === Team.EVIL)) &&
       (activeRoleID === RoleID.MINION || p.currentRole !== RoleID.MINION)
   );
 
-  const otherMasons = (Object.values(game.players) as Player[]).filter(p => 
+  const otherMasons = allPlayers.filter(p => 
       p.id !== me.id && 
       (p.originalRole === RoleID.MASON || p.originalRole === RoleID.MASON_2 || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && (p.currentRole === RoleID.MASON || p.currentRole === RoleID.MASON_2)))
   );
@@ -374,7 +461,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
   const isSquire = activeRoleID === RoleID.SQUIRE;
   const squireEvilPlayers = isSquire 
-    ? (Object.values(game.players) as Player[]).filter(p => 
+    ? allPlayers.filter(p => 
         p.id !== me.id && 
         (ROLE_METADATA[p.originalRole].team === Team.EVIL || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && ROLE_METADATA[p.currentRole].team === Team.EVIL)) &&
         p.originalRole !== RoleID.SQUIRE && 
@@ -598,9 +685,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
       // Calculate logic for animation
       // Filter players who are visible and shiftable
-      const sortedPlayers = Object.values(game.players)
-          .filter(p => p.seatId !== null)
-          .sort((a, b) => a.seatId! - b.seatId!);
+      const sortedPlayers = sortPlayersStably(Object.values(game.players) as Player[]);
       
       const shiftable = sortedPlayers.filter(p => p.id !== me.id && !p.shielded);
 
@@ -969,92 +1054,6 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   };
 
   // ------------------------------------------------------------------
-  // INLINE CARD COMPONENT
-  // ------------------------------------------------------------------
-  const NightCard: React.FC<{ 
-      id: string, label: string, role?: RoleID, isCenter?: boolean, 
-      isSelected: boolean, isRevealed: boolean, isSwapping: boolean, isShielded?: boolean, hasArtifact?: boolean,
-      onClick: () => void, disabled: boolean, innerRef?: React.Ref<HTMLButtonElement>, style?: React.CSSProperties,
-      className?: string
-  }> = ({ 
-      id, label, role, isCenter, isSelected, isRevealed, isSwapping, isShielded, hasArtifact, onClick, disabled, innerRef, style, className 
-  }) => {
-      const revealedRole = isRevealed && role ? role : null;
-      const meta = revealedRole ? ROLE_METADATA[revealedRole] : null;
-
-      // Special rotation for Alpha Wolf Center Card
-      const isAlphaCenter = id === 'center-alpha';
-
-      return (
-          <div className="flex flex-col items-center relative group-container">
-            <button
-                ref={innerRef}
-                onClick={onClick}
-                disabled={disabled}
-                style={style}
-                className={`
-                    relative w-24 h-36 sm:w-28 sm:h-40 rounded-xl transition-all duration-300 transform-style-3d cursor-pointer group
-                    ${isSelected 
-                        ? 'ring-3 sm:ring-4 ring-primary scale-105 -translate-y-1 sm:-translate-y-2 z-10 shadow-[0_0_20px_rgba(18,184,134,0.5)]' 
-                        : 'scale-100 hover:scale-105 z-0'
-                    }
-                    ${style ? 'troublemaker-card' : isSwapping ? 'animate-swap' : ''}
-                    ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-                    ${isAlphaCenter ? 'rotate-90 scale-90 border-2 border-red-500' : ''}
-                    ${className || ''}
-                `}
-            >
-                {/* Shield Token */}
-                {isShielded && (
-                     <div key={`shield-${id}-${isShielded ? 'on' : 'off'}`} className="shield-token">🛡️</div>
-                )}
-
-                {/* Artifact Token */}
-                {hasArtifact && (
-                     <div key={`artifact-${id}`} className="absolute -top-2 -left-2 z-30 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500/30 border border-amber-400 flex items-center justify-center text-xs sm:text-sm shadow-[0_0_15px_rgba(245,158,11,0.6)] backdrop-blur-md animate-fade-in" title="Artifact Token">🏺</div>
-                )}
-                
-                <div className={`
-                    w-full h-full relative transition-transform duration-700 transform-style-3d
-                    ${isRevealed ? 'rotate-y-180' : ''}
-                `}>
-                    {/* FRONT (Hidden State) */}
-                    <div className="absolute inset-0 backface-hidden bg-[#0c0e1a] border-2 border-[#2a2545] rounded-xl flex items-center justify-center shadow-lg" style={{ boxShadow: 'inset 0 1px 0 rgba(220,245,235,0.04), 0 0 8px rgba(0,0,0,0.5)' }}>
-                        <span className="text-3xl sm:text-4xl font-display text-[#3a3555] font-bold opacity-60">?</span>
-                        {isSelected && <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-xs text-white">✓</div>}
-                    </div>
-
-                    {/* BACK (Revealed State) */}
-                    <div className={`
-                        absolute inset-0 backface-hidden rotate-y-180 rounded-xl bg-[#0e0f1a] border-2 flex flex-col items-center justify-center p-2 shadow-xl
-                        ${meta?.team === Team.GOOD ? 'border-good shadow-good/20' : meta?.team === Team.EVIL ? 'border-evil shadow-evil/20' : 'border-independent shadow-independent/20'}
-                    `}>
-                        {meta && (
-                            <>
-                                <RoleIcon role={revealedRole!} className="w-12 h-12 sm:w-16 sm:h-16 mb-1" />
-                                <span className="text-xs sm:text-sm font-bold text-center leading-tight text-white line-clamp-1">{meta.name}</span>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </button>
-            <span 
-                className={`
-                    relative z-20 mt-2 font-bold transition-colors text-center truncate max-w-[90px] sm:max-w-[110px] text-xs sm:text-sm
-                    ${isSelected ? 'text-primary' : 'text-gray-200'}
-                `}
-                style={{
-                    lineHeight: '1.2',
-                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-                }}
-            >
-                {label}
-            </span>
-          </div>
-      );
-  };
-
-  // ------------------------------------------------------------------
   // ROBBER SPECIAL UI & HEADER/RENDER HELPERS
   // ------------------------------------------------------------------
   
@@ -1252,9 +1251,11 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   if (activeRoleID === RoleID.AURA_SEER) {
       headerTitle = "AURA SEER"; headerDesc = "Players who moved or viewed a card";
       const actorIds = game.nightActors || [];
-      const actorPlayers = actorIds
-          .map(id => game.players[id])
-          .filter(Boolean);
+      const actorPlayers = sortPlayersStably(
+          actorIds
+              .map(id => game.players[id])
+              .filter(Boolean) as Player[]
+      );
       auraSeerUI = (
           <div className="w-full max-w-md mt-6 animate-fade-in">
               <h2 className="text-cyan-400 font-bold text-base sm:text-lg sm:text-xl mb-4 tracking-widest text-center">AURA DETECTED</h2>
@@ -1284,7 +1285,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   // APPRENTICE TANNER HEADER
   if (activeRoleID === RoleID.APPRENTICE_TANNER) {
       headerTitle = "APPRENTICE TANNER 🎭";
-      const tannerPlayer = (Object.values(game.players) as Player[]).find(p => p.originalRole === RoleID.TANNER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.TANNER));
+      const tannerPlayer = allPlayers.find(p => p.originalRole === RoleID.TANNER || ((p.originalRole === RoleID.COPYCAT || p.originalRole === RoleID.DOPPELGANGER) && p.currentRole === RoleID.TANNER));
       if (tannerPlayer) {
           headerDesc = `The Tanner is: ${tannerPlayer.name}`;
       } else {
@@ -1298,15 +1299,10 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
       headerDesc = step === 'FINISHED' ? (infoMessage.includes("Unchanged") ? "You are still the Insomniac" : "You have been swapped!") : "Checking your role...";
   }
 
-  let visiblePlayers = (Object.values(game.players) as Player[]);
-  
-  // Sort by seatId for Village Idiot visual clarity
-  if (activeRoleID === RoleID.VILLAGE_IDIOT) {
-      visiblePlayers = visiblePlayers.sort((a, b) => (a.seatId ?? 0) - (b.seatId ?? 0));
-  }
+  let visiblePlayers = allPlayers;
   
   if (activeRoleID === RoleID.THING) {
-      const sorted = (Object.values(game.players) as Player[]).sort((a, b) => (a.seatId ?? 0) - (b.seatId ?? 0));
+      const sorted = allPlayers;
       const myIdx = sorted.findIndex(p => p.id === me.id);
       if (myIdx !== -1 && sorted.length >= 2) {
           const l = (myIdx - 1 + sorted.length) % sorted.length;
@@ -1314,7 +1310,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           visiblePlayers = [sorted[l], sorted[r]];
       } else visiblePlayers = visiblePlayers.filter(p => p.id !== me.id);
   } else if (activeRoleID === RoleID.MORTICIAN) {
-      const sorted = (Object.values(game.players) as Player[]).sort((a, b) => (a.seatId ?? 0) - (b.seatId ?? 0));
+      const sorted = allPlayers;
       const myIdx = sorted.findIndex(p => p.id === me.id);
       if (myIdx !== -1 && sorted.length >= 2) {
           const l = (myIdx - 1 + sorted.length) % sorted.length;
@@ -1588,7 +1584,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
 
                               return (
                                   <NightCard 
-                                    key={`${p.id}-${p.currentRole}`} // Force refresh on role change to clear animation artifacts
+                                    key={p.id}
                                     id={p.id} label={p.name} role={roleToReveal}
                                     isSelected={selectedPlayers.includes(p.id)} isRevealed={!!revealedIds[p.id]} isSwapping={swappingIds.includes(p.id)}
                                     isShielded={showShield}
@@ -1680,7 +1676,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                   <button onClick={handleFinish} className="w-full py-2 sm:py-4 rounded-2xl font-black text-base sm:text-lg sm:text-xl tracking-widest bg-gray-700 hover:bg-gray-600 text-white shadow-lg transition-all animate-bounce">CONTINUE →</button>
               )}
           </div>
-          <SeatingButton players={Object.values(game.players) as Player[]} />
+          <SeatingButton players={allPlayers} />
 
           {curatorInfoModalOpen && (
             <ArtifactsInfoModal 

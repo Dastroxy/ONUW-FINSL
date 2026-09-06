@@ -141,3 +141,17 @@ export interface NightActionPayload {
   direction?: 'CLOCKWISE' | 'ANTI-CLOCKWISE';
   artifactToken?: string; // Artifact placed by Curator
 }
+
+/**
+ * Deterministically sorts players by seatId (seat circle order), 
+ * falling back to join time and then ID, preventing visual shuffling on updates.
+ */
+export const sortPlayersStably = (players: Player[]): Player[] => {
+  return [...players].sort((a, b) => {
+    const seatA = (a.seatId !== null && a.seatId !== undefined) ? a.seatId : 9999;
+    const seatB = (b.seatId !== null && b.seatId !== undefined) ? b.seatId : 9999;
+    if (seatA !== seatB) return seatA - seatB;
+    if (a.joined !== b.joined) return a.joined - b.joined;
+    return a.id.localeCompare(b.id);
+  });
+};

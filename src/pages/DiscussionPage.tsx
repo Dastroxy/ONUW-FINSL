@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { GameState, Player, RoleID, Team } from '../types';
+import { GameState, Player, RoleID, Team, sortPlayersStably } from '../types';
 import { toggleDiscussionReady, advanceToVoting } from '../services/firestoreService';
 import RoleCard from '../components/RoleCard';
 import RoleIcon from '../components/RoleIcons';
@@ -43,8 +43,9 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
   const isReady = (game.discussionReadyPlayers || []).includes(me.id);
   const readyCount = (game.discussionReadyPlayers || []).length;
   const totalPlayers = Object.keys(game.players).length;
-  const revealedPlayers = Object.values(game.players).filter(p => p.isRevealed);
-  const playersWithArtifact = Object.values(game.players).filter(p => !!p.artifact);
+  const allPlayers = sortPlayersStably(Object.values(game.players) as Player[]);
+  const revealedPlayers = allPlayers.filter(p => p.isRevealed);
+  const playersWithArtifact = allPlayers.filter(p => !!p.artifact);
   const myArtifact = me.artifact as ArtifactID | undefined;
   const myArtifactMeta = myArtifact ? ARTIFACT_METADATA[myArtifact] : null;
   const myRoleMeta = ROLE_METADATA[me.currentRole];
@@ -328,7 +329,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
               </div>
           </div>
 
-          <SeatingButton players={Object.values(game.players) as Player[]} />
+          <SeatingButton players={allPlayers} />
 
           {showArtifactModal && (
               <ArtifactsInfoModal
