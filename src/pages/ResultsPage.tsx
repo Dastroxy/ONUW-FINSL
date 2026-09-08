@@ -1,9 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
-import { GameState, Team, Player, RoleID } from '../types';
+import { GameState, Team, Player, RoleID, MarkID } from '../types';
 import { resetGame } from '../services/firestoreService';
 import RoleCard from '../components/RoleCard';
 import RoleIcon from '../components/RoleIcons';
+import MarkToken from '../components/MarkToken';
 import { useNavigate } from 'react-router-dom';
 import { ROLE_METADATA } from '../constants';
 
@@ -103,6 +104,11 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
              pTeam = ROLE_METADATA[p.currentRole].team;
           }
 
+          // Mark of the Vampire conversion
+          if (p.marks && p.marks.includes(MarkID.VAMPIRE)) {
+             pTeam = Team.EVIL;
+          }
+
           // Nostradamus override
           if ((p.originalRole === RoleID.NOSTRADAMUS || ((p.originalRole === RoleID.DOPPELGANGER || p.originalRole === RoleID.COPYCAT) && p.currentRole === RoleID.NOSTRADAMUS)) && p.nostradamusRole) {
                const adoptedMeta = ROLE_METADATA[p.nostradamusRole];
@@ -146,6 +152,60 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                   const neighborDied = eliminated.includes(sortedBySeats[leftIdx].id) || eliminated.includes(sortedBySeats[rightIdx].id);
                   won = won || (morticianSurvived && neighborDied);
               }
+          }
+
+          // Renfield override (wins if no vampires died; joins village if no vampires in game)
+          if (p.currentRole === RoleID.RENFIELD) {
+              const vampireRoles = [RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT];
+              const vampires = players.filter(pl => vampireRoles.includes(pl.currentRole) || (pl.marks && pl.marks.includes(MarkID.VAMPIRE)));
+              if (vampires.length > 0) {
+                  const vampireDied = eliminated.some(id => vampires.some(v => v.id === id));
+                  won = !vampireDied;
+              }
+          }
+
+          // Assassin override
+          if (p.currentRole === RoleID.ASSASSIN) {
+              const target = players.find(pl => pl.marks && pl.marks.includes(MarkID.ASSASSIN));
+              if (target && eliminated.includes(target.id)) {
+                  won = true;
+              }
+          }
+
+          // Apprentice Assassin override
+          if (p.currentRole === RoleID.APPRENTICE_ASSASSIN) {
+              const assassin = players.find(pl => pl.currentRole === RoleID.ASSASSIN);
+              if (assassin) {
+                  if (eliminated.includes(assassin.id)) won = true;
+              } else {
+                  const target = players.find(pl => pl.marks && pl.marks.includes(MarkID.ASSASSIN));
+                  if (target && eliminated.includes(target.id)) won = true;
+              }
+          }
+
+          // Lovers override (Mark of Love: both win if both survive)
+          if (p.marks && p.marks.includes(MarkID.LOVE)) {
+              const lovers = players.filter(pl => pl.marks && pl.marks.includes(MarkID.LOVE));
+              const anyLoverDied = lovers.some(l => eliminated.includes(l.id));
+              if (!anyLoverDied && lovers.length > 1) {
+                  won = true;
+              } else if (anyLoverDied) {
+                  won = false;
+              }
+          }
+
+          // Mark of the Traitor override (wins if teammate died and self survived)
+          if (p.marks && p.marks.includes(MarkID.TRAITOR)) {
+              const teamMateDied = players.some(pl => pl.id !== p.id && ROLE_METADATA[pl.currentRole]?.team === pTeam && eliminated.includes(pl.id));
+              if (!eliminated.includes(p.id) && teamMateDied) {
+                  won = true;
+              }
+          }
+
+          // Mark of the Disease penalty: anyone who voted for Diseased or Mark of Disease cannot win
+          const diseasedCarrierIds = players.filter(pl => pl.currentRole === RoleID.DISEASED || (pl.marks && pl.marks.includes(MarkID.DISEASE))).map(pl => pl.id);
+          if (p.votedFor && diseasedCarrierIds.includes(p.votedFor)) {
+              won = false;
           }
 
           if (won) w.push(p);
@@ -201,6 +261,13 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                              <RoleIcon role={p.currentRole} className="w-5 h-5 sm:w-6 sm:h-6" />
                              {ROLE_METADATA[p.currentRole]?.name}
                          </div>
+                         {p.marks && p.marks.length > 0 && (
+                             <div className="flex flex-wrap gap-1 justify-center mt-1.5">
+                                 {p.marks.map((m, mIdx) => (
+                                     <MarkToken key={mIdx} markId={m} size="sm" showLabel={true} />
+                                 ))}
+                             </div>
+                         )}
                      </div>
                  </div>
              ))}

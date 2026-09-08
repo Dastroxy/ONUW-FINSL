@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { GameState, Player, RoleID, Team, sortPlayersStably } from '../types';
+import { GameState, Player, RoleID, Team, MarkID, sortPlayersStably } from '../types';
 import { toggleDiscussionReady, advanceToVoting } from '../services/firestoreService';
 import RoleCard from '../components/RoleCard';
 import RoleIcon from '../components/RoleIcons';
@@ -8,7 +8,10 @@ import RolesInfoButton from '../components/RolesInfoButton';
 import SeatingButton from '../components/SeatingButton';
 import { ROLE_METADATA } from '../constants';
 import { ARTIFACT_METADATA, ArtifactID, DEFAULT_CURATOR_ARTIFACTS } from '../constants/artifacts';
+import { MARK_METADATA } from '../constants/marks';
 import ArtifactsInfoModal from '../components/ArtifactsInfoModal';
+import MarkToken from '../components/MarkToken';
+import MarksInfoModal from '../components/MarksInfoModal';
 
 interface Props {
   game: GameState;
@@ -19,6 +22,8 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
   const [timeLeft, setTimeLeft] = useState<number>(300);
   const [showArtifactModal, setShowArtifactModal] = useState<boolean>(false);
   const [selectedArtifactForModal, setSelectedArtifactForModal] = useState<string | null>(null);
+  const [showMarksModal, setShowMarksModal] = useState<boolean>(false);
+  const [selectedMarkForModal, setSelectedMarkForModal] = useState<MarkID | null>(null);
   
   // Timer Sync
   useEffect(() => {
@@ -174,6 +179,51 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
                               Your role has changed! You are now on team <span className="font-bold uppercase text-white">{myRoleMeta?.team}</span> as <span className="font-bold text-amber-300">{myRoleMeta?.name}</span>.
                           </p>
                       )}
+                  </div>
+              </div>
+          )}
+
+          {/* PERSONAL MARKS NOTIFICATION */}
+          {me.marks && me.marks.length > 0 && (
+              <div className="relative z-20 mt-4 w-full max-w-md p-3.5 rounded-2xl bg-purple-950/70 border border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.3)] backdrop-blur-md flex flex-col gap-2 animate-fade-in-up">
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                          <span className="text-xl">🏷️</span>
+                          <span className="text-purple-200 font-bold text-xs uppercase tracking-wider">
+                              Marks Placed On You ({me.marks.length})
+                          </span>
+                      </div>
+                      <button
+                          type="button"
+                          onClick={() => { setSelectedMarkForModal(null); setShowMarksModal(true); }}
+                          className="text-[11px] text-purple-300 hover:text-purple-100 font-bold underline cursor-pointer"
+                      >
+                          Marks Guide
+                      </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                      {me.marks.map((markId, idx) => {
+                          const meta = MARK_METADATA[markId];
+                          return (
+                              <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => { setSelectedMarkForModal(markId); setShowMarksModal(true); }}
+                                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-900/50 border border-purple-400/40 hover:bg-purple-800/60 transition-colors text-left group"
+                              >
+                                  <MarkToken markId={markId} size="sm" />
+                                  <div>
+                                      <div className="text-xs font-bold text-purple-100 group-hover:text-white flex items-center gap-1">
+                                          {meta?.name || markId}
+                                          <span className="text-[10px] text-purple-300 opacity-60">ⓘ</span>
+                                      </div>
+                                      <div className="text-[11px] text-purple-200/80 leading-tight">
+                                          {meta?.description || 'Active Night Mark'}
+                                      </div>
+                                  </div>
+                              </button>
+                          );
+                      })}
                   </div>
               </div>
           )}
@@ -352,11 +402,28 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
 
           <SeatingButton players={allPlayers} />
 
+          {/* Floating Marks Info Button */}
+          <button
+              onClick={() => { setSelectedMarkForModal(null); setShowMarksModal(true); }}
+              className="fixed bottom-40 right-4 sm:bottom-40 sm:right-6 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-purple-950/90 border border-purple-500/50 backdrop-blur-md transform-gpu text-purple-200 hover:text-white font-black text-sm shadow-[0_4px_20px_rgba(0,0,0,0.6)] transition-all hover:bg-purple-900/50 hover:scale-105 active:scale-95 flex items-center justify-center"
+              aria-label="Show Marks Info"
+              title="View Marks Reference Guide"
+          >
+              🏷️
+          </button>
+
           {showArtifactModal && (
               <ArtifactsInfoModal
                   selectedArtifact={selectedArtifactForModal}
                   allowedArtifactIds={gameArtifactIds}
                   onClose={() => { setShowArtifactModal(false); setSelectedArtifactForModal(null); }}
+              />
+          )}
+
+          {showMarksModal && (
+              <MarksInfoModal
+                  selectedMark={selectedMarkForModal}
+                  onClose={() => { setShowMarksModal(false); setSelectedMarkForModal(null); }}
               />
           )}
       </div>

@@ -237,7 +237,7 @@ export const ROLE_METADATA: Record<RoleID, { name: string, team: Team, descripti
     name: 'The Count', 
     team: Team.EVIL, 
     description: 'Place Mark of Fear on any non-Vampire player.', 
-    wakeOrder: -6.1, 
+    wakeOrder: -5.9, 
     expansion: 'Vampire',
     icon: '🧛👑'
   },
@@ -245,7 +245,7 @@ export const ROLE_METADATA: Record<RoleID, { name: string, team: Team, descripti
     name: 'Renfield', 
     team: Team.MINORITY, 
     description: 'Give Mark of the Bat to yourself.', 
-    wakeOrder: -6.2, 
+    wakeOrder: -5.7, 
     expansion: 'Vampire',
     icon: '🦇'
   },
@@ -293,7 +293,7 @@ export const ROLE_METADATA: Record<RoleID, { name: string, team: Team, descripti
     name: 'Appr. Assassin', 
     team: Team.GOOD, 
     description: 'If Assassin exists, help them. If not, place Mark.', 
-    wakeOrder: -1.1, 
+    wakeOrder: -0.5, 
     expansion: 'Vampire',
     icon: '🗡️👶'
   },
@@ -417,5 +417,5 @@ export const ROLE_METADATA: Record<RoleID, { name: string, team: Team, descripti
 
 // Sort sequence based on wakeOrder from ROLE_METADATA
 export const NIGHT_SEQUENCE = Object.keys(ROLE_METADATA)
-  .filter(key => ROLE_METADATA[key as RoleID].wakeOrder < 100 && key !== RoleID.WEREWOLF_2 && key !== RoleID.MASON_2)
+  .filter(key => ROLE_METADATA[key as RoleID].wakeOrder < 100 && key !== RoleID.WEREWOLF_2 && key !== RoleID.MASON_2 && key !== RoleID.THE_MASTER)
   .sort((a, b) => ROLE_METADATA[a as RoleID].wakeOrder - ROLE_METADATA[b as RoleID].wakeOrder) as RoleID[];

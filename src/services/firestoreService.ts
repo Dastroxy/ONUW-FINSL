@@ -4,33 +4,74 @@ import { collection, doc, setDoc, updateDoc, getDoc, onSnapshot, arrayUnion, add
 import { GameState, GamePhase, RoleID, Player, CenterCard, NightActionPayload, Team } from '../types';
 import { ROLE_METADATA, NIGHT_SEQUENCE } from '../constants';
 import { ArtifactID, ARTIFACT_METADATA, DEFAULT_CURATOR_ARTIFACTS } from '../constants/artifacts';
+import { MarkID, isMarksSystemActive } from '../constants/marks';
 
 const GAMES_COLLECTION = 'games';
 
 export const COPYCAT_DEFERRED_ROLES = new Set<RoleID>([
-  RoleID.MINION, RoleID.SQUIRE, RoleID.BEHOLDER, RoleID.INSOMNIAC,
-  RoleID.MORTICIAN, RoleID.MASON, RoleID.MASON_2, RoleID.APPRENTICE_TANNER,
-  RoleID.DREAM_WOLF, RoleID.AURA_SEER,
+  RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT, RoleID.RENFIELD,
+  RoleID.DISEASED, RoleID.CUPID, RoleID.INSTIGATOR, RoleID.PRIEST,
+  RoleID.ASSASSIN, RoleID.APPRENTICE_ASSASSIN,
+  RoleID.SENTINEL, RoleID.ALPHA_WOLF, RoleID.MYSTIC_WOLF, RoleID.WEREWOLF, RoleID.WEREWOLF_2,
+  RoleID.MINION, RoleID.APPRENTICE_TANNER, RoleID.MASON, RoleID.MASON_2,
+  RoleID.THING, RoleID.SEER, RoleID.APPRENTICE_SEER, RoleID.PARANORMAL_INVESTIGATOR,
+  RoleID.MARKSMAN, RoleID.NOSTRADAMUS, RoleID.PSYCHIC, RoleID.ROBBER,
+  RoleID.WITCH, RoleID.PICKPOCKET, RoleID.TROUBLEMAKER, RoleID.VILLAGE_IDIOT,
+  RoleID.AURA_SEER, RoleID.GREMLIN, RoleID.DRUNK, RoleID.INSOMNIAC,
+  RoleID.SQUIRE, RoleID.BEHOLDER, RoleID.REVEALER, RoleID.EXPOSER,
+  RoleID.CURATOR, RoleID.MORTICIAN, RoleID.DREAM_WOLF
 ]);
 
 export const DOPPELGANGER_IMMEDIATE_ROLES = new Set<RoleID>([
   RoleID.SEER, RoleID.ROBBER, RoleID.TROUBLEMAKER, RoleID.DRUNK,
   RoleID.SENTINEL, RoleID.ALPHA_WOLF, RoleID.MYSTIC_WOLF, RoleID.APPRENTICE_SEER,
   RoleID.PARANORMAL_INVESTIGATOR, RoleID.WITCH, RoleID.VILLAGE_IDIOT,
-  RoleID.DISEASED, RoleID.CUPID, RoleID.INSTIGATOR, RoleID.THING,
-  RoleID.CURATOR, RoleID.NOSTRADAMUS, RoleID.REVEALER,
+  RoleID.THING, RoleID.CURATOR, RoleID.NOSTRADAMUS, RoleID.REVEALER,
   RoleID.GREMLIN, RoleID.EXPOSER
 ]);
 
 export const DOPPELGANGER_DEFERRED_ROLES = new Set<RoleID>([
   RoleID.MASON, RoleID.MASON_2, RoleID.WEREWOLF, RoleID.WEREWOLF_2,
   RoleID.MINION, RoleID.INSOMNIAC,
-  RoleID.VAMPIRE, RoleID.THE_COUNT, RoleID.RENFIELD, RoleID.PRIEST,
+  RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT, RoleID.RENFIELD,
+  RoleID.DISEASED, RoleID.CUPID, RoleID.INSTIGATOR, RoleID.PRIEST,
   RoleID.ASSASSIN, RoleID.APPRENTICE_ASSASSIN, RoleID.MARKSMAN,
   RoleID.PICKPOCKET, RoleID.PSYCHIC,
   RoleID.MORTICIAN, RoleID.AURA_SEER, RoleID.APPRENTICE_TANNER,
   RoleID.SQUIRE, RoleID.BEHOLDER, RoleID.DREAM_WOLF
 ]);
+
+export const enqueueRoleIfDeferred = (currentQueue: RoleID[], roleToAdd: RoleID): RoleID[] => {
+  const rolesToEnqueue: RoleID[] = [];
+  if (roleToAdd === RoleID.WEREWOLF_2) {
+    rolesToEnqueue.push(RoleID.WEREWOLF);
+  } else if (roleToAdd === RoleID.MASON_2) {
+    rolesToEnqueue.push(RoleID.MASON);
+  } else if (roleToAdd === RoleID.THE_MASTER) {
+    rolesToEnqueue.push(RoleID.VAMPIRE);
+  } else if (roleToAdd === RoleID.THE_COUNT) {
+    rolesToEnqueue.push(RoleID.VAMPIRE);
+    rolesToEnqueue.push(RoleID.THE_COUNT);
+  } else {
+    rolesToEnqueue.push(roleToAdd);
+  }
+
+  let resultQueue = [...currentQueue];
+  for (const queueRole of rolesToEnqueue) {
+    if (!ROLE_METADATA[queueRole] || ROLE_METADATA[queueRole].wakeOrder >= 100) continue;
+    if (resultQueue.includes(queueRole)) continue;
+    const targetWake = ROLE_METADATA[queueRole].wakeOrder;
+    let insertIdx = resultQueue.length;
+    for (let i = 0; i < resultQueue.length; i++) {
+      if (ROLE_METADATA[resultQueue[i]].wakeOrder > targetWake) {
+        insertIdx = i;
+        break;
+      }
+    }
+    resultQueue.splice(insertIdx, 0, queueRole);
+  }
+  return resultQueue;
+};
 
 const generateRoomCode = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
@@ -428,8 +469,8 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
              addLog(`${actor.name} (${actorRoleLabel}) swapped ${p1.name} (${p1Meta.name} ${p1Meta.icon}) ↔ ${p2.name} (${p2Meta.name} ${p2Meta.icon}) 🔄`);
          }
       } 
-      // GREMLIN: Swap any two players (can include self)
-      else if (actor.originalRole === RoleID.GREMLIN && payload.targetPlayerId && payload.secondTargetPlayerId) {
+      // GREMLIN: Swap cards between any two players (can include self)
+      else if (actor.originalRole === RoleID.GREMLIN && payload.targetPlayerId && payload.secondTargetPlayerId && payload.swapType !== 'MARKS') {
          const p1 = game.players[payload.targetPlayerId];
          const p2 = game.players[payload.secondTargetPlayerId];
          if (p1 && p2) {
@@ -606,19 +647,13 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
           updates[`players.${actor.id}.copiedRole`] = role;
           addLog(`${actor.name} (Doppelgänger) copied ${target.name} → ${targetMeta.name} ${targetMeta.icon}`);
           
-          const queueRole = (role === RoleID.WEREWOLF_2) ? RoleID.WEREWOLF : (role === RoleID.MASON_2) ? RoleID.MASON : role;
-          if (DOPPELGANGER_DEFERRED_ROLES.has(role) && !game.nightQueue.includes(queueRole) && target.originalRole !== RoleID.COPYCAT) {
-              const copiedWakeOrder = ROLE_METADATA[queueRole].wakeOrder;
-              const newQueue = [...game.nightQueue];
-              let insertIdx = newQueue.length;
-              for (let i = 0; i < newQueue.length; i++) {
-                  if (ROLE_METADATA[newQueue[i]].wakeOrder > copiedWakeOrder) {
-                      insertIdx = i;
-                      break;
-                  }
+          if (DOPPELGANGER_DEFERRED_ROLES.has(role) && target.originalRole !== RoleID.COPYCAT) {
+              let updatedQueue = [...(updates.nightQueue || game.nightQueue)];
+              updatedQueue = enqueueRoleIfDeferred(updatedQueue, role);
+              if (role === RoleID.THE_COUNT || role === RoleID.THE_MASTER) {
+                  updatedQueue = enqueueRoleIfDeferred(updatedQueue, RoleID.VAMPIRE);
               }
-              newQueue.splice(insertIdx, 0, queueRole);
-              updates.nightQueue = newQueue;
+              updates.nightQueue = updatedQueue;
           }
       }
   }
@@ -633,19 +668,13 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
           updates[`players.${actor.id}.copiedRole`] = role;
           addLog(`${actor.name} (Copycat) copied Center Card → ${meta.name} ${meta.icon}`);
 
-          const queueRole = (role === RoleID.WEREWOLF_2) ? RoleID.WEREWOLF : (role === RoleID.MASON_2) ? RoleID.MASON : role;
-          if (COPYCAT_DEFERRED_ROLES.has(role) && !game.nightQueue.includes(queueRole)) {
-              const copiedWakeOrder = ROLE_METADATA[queueRole].wakeOrder;
-              const newQueue = [...game.nightQueue];
-              let insertIdx = newQueue.length;
-              for (let i = 0; i < newQueue.length; i++) {
-                  if (ROLE_METADATA[newQueue[i]].wakeOrder > copiedWakeOrder) {
-                      insertIdx = i;
-                      break;
-                  }
+          if (COPYCAT_DEFERRED_ROLES.has(role)) {
+              let updatedQueue = [...(updates.nightQueue || game.nightQueue)];
+              updatedQueue = enqueueRoleIfDeferred(updatedQueue, role);
+              if (role === RoleID.THE_COUNT || role === RoleID.THE_MASTER) {
+                  updatedQueue = enqueueRoleIfDeferred(updatedQueue, RoleID.VAMPIRE);
               }
-              newQueue.splice(insertIdx, 0, queueRole);
-              updates.nightQueue = newQueue;
+              updates.nightQueue = updatedQueue;
           }
       }
   }
@@ -768,47 +797,109 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
       }
   }
 
-  // MARK PLACEMENT
+  // MARK PLACEMENT & NEW ROLES (Vampire, Count, Renfield, Cupid, Diseased, Instigator, Priest, Assassin, Pickpocket, Gremlin, Marksman)
+  const effectiveRoleForMark = (actor.originalRole === RoleID.DOPPELGANGER || actor.originalRole === RoleID.COPYCAT)
+      ? (actor.copiedRole || actor.currentRole)
+      : actor.originalRole;
+
   if (payload.actionType === 'MARK' && !isCurator) {
-      if (actor.originalRole === RoleID.CUPID) {
+      if (effectiveRoleForMark === RoleID.CUPID) {
           const p1 = payload.targetPlayerId ? game.players[payload.targetPlayerId] : null;
           const p2 = payload.secondTargetPlayerId ? game.players[payload.secondTargetPlayerId] : null;
           if (p1 && p2) {
               if (p1.shielded || p2.shielded) {
-                  addLog(`${actor.name} (${actorRoleLabel}) tried to link lovers but target was shielded 🛡️`);
+                  addLog(`${actor.name} (${actorRoleLabel}) tried to link lovers but a target was shielded 🛡️`);
               } else {
                   addLog(`${actor.name} (${actorRoleLabel}) linked ${p1.name} & ${p2.name} with Mark of Love 💘`);
-                  updates[`players.${p1.id}.marks`] = arrayUnion("MARKED");
-                  updates[`players.${p2.id}.marks`] = arrayUnion("MARKED");
+                  updates[`players.${p1.id}.marks`] = [MarkID.LOVE];
+                  updates[`players.${p2.id}.marks`] = [MarkID.LOVE];
               }
           }
+      } else if (effectiveRoleForMark === RoleID.PRIEST) {
+          // Priest marks himself with Mark of Clarity, and optionally 1 other player
+          updates[`players.${actor.id}.marks`] = [MarkID.CLARITY];
+          addLog(`${actor.name} (${actorRoleLabel}) blessed themselves with Mark of Clarity ⛪`);
+          if (payload.secondTargetPlayerId && game.players[payload.secondTargetPlayerId]) {
+              const other = game.players[payload.secondTargetPlayerId];
+              if (other.shielded) {
+                  addLog(`${actor.name} (${actorRoleLabel}) tried to cleanse ${other.name} but target was shielded 🛡️`);
+              } else {
+                  updates[`players.${other.id}.marks`] = [MarkID.CLARITY];
+                  addLog(`${actor.name} (${actorRoleLabel}) cleansed ${other.name} with Mark of Clarity ⛪`);
+              }
+          }
+      } else if (effectiveRoleForMark === RoleID.RENFIELD) {
+          // Renfield takes Mark of the Bat on himself
+          updates[`players.${actor.id}.marks`] = [MarkID.BAT];
+          addLog(`${actor.name} (${actorRoleLabel}) took the Mark of the Bat 🦇`);
       } else if (payload.targetPlayerId) {
           const target = game.players[payload.targetPlayerId];
           if (target?.shielded) {
-              addLog(`${actor.name} (${actorRoleLabel}) tried to mark but target was shielded 🛡️`);
+              addLog(`${actor.name} (${actorRoleLabel}) tried to mark ${target.name} but target was shielded 🛡️`);
           } else if (target) {
-              updates[`players.${payload.targetPlayerId}.marks`] = arrayUnion("MARKED");
-              if (actor.originalRole === RoleID.VAMPIRE) {
-                  addLog(`${actor.name} (${actorRoleLabel}) marked ${target.name} with Mark of the Vampire 🧛`);
-              } else if (actor.originalRole === RoleID.THE_COUNT) {
-                  addLog(`${actor.name} (${actorRoleLabel}) marked ${target.name} with Mark of the Vampire 🧛👑`);
-              } else if (actor.originalRole === RoleID.RENFIELD) {
-                  addLog(`${actor.name} (${actorRoleLabel}) placed Mark of the Bat on ${target.name} 🦇`);
-              } else if (actor.originalRole === RoleID.ASSASSIN || actor.originalRole === RoleID.APPRENTICE_ASSASSIN) {
-                  addLog(`${actor.name} (${actorRoleLabel}) placed Mark of the Assassin on ${target.name} 🗡️`);
-              } else if (actor.originalRole === RoleID.DISEASED) {
+              if (effectiveRoleForMark === RoleID.VAMPIRE) {
+                  updates[`players.${payload.targetPlayerId}.marks`] = [MarkID.VAMPIRE];
+                  addLog(`${actor.name} (${actorRoleLabel}) gave Mark of the Vampire to ${target.name} 🧛`);
+              } else if (effectiveRoleForMark === RoleID.THE_COUNT) {
+                  updates[`players.${payload.targetPlayerId}.marks`] = [MarkID.FEAR];
+                  addLog(`${actor.name} (${actorRoleLabel}) placed Mark of Fear on ${target.name} 😱`);
+              } else if (effectiveRoleForMark === RoleID.ASSASSIN || effectiveRoleForMark === RoleID.APPRENTICE_ASSASSIN) {
+                  updates[`players.${payload.targetPlayerId}.marks`] = [MarkID.ASSASSIN];
+                  addLog(`${actor.name} (${actorRoleLabel}) targeted ${target.name} with Mark of the Assassin 🎯`);
+              } else if (effectiveRoleForMark === RoleID.DISEASED) {
+                  updates[`players.${payload.targetPlayerId}.marks`] = [MarkID.DISEASE];
                   addLog(`${actor.name} (${actorRoleLabel}) infected ${target.name} with Mark of Disease 🤢`);
-              } else if (actor.originalRole === RoleID.INSTIGATOR) {
+              } else if (effectiveRoleForMark === RoleID.INSTIGATOR) {
+                  updates[`players.${payload.targetPlayerId}.marks`] = [MarkID.TRAITOR];
                   addLog(`${actor.name} (${actorRoleLabel}) placed Mark of the Traitor on ${target.name} 🗡️`);
-              } else if (actor.originalRole === RoleID.PRIEST) {
-                  addLog(`${actor.name} (${actorRoleLabel}) blessed ${target.name} with Mark of Clarity ⛪`);
-              } else if (actor.originalRole === RoleID.PICKPOCKET) {
-                  addLog(`${actor.name} (${actorRoleLabel}) pickpocketed ${target.name} 🤏`);
               } else {
-                  addLog(`${actor.name} (${actorRoleLabel}) marked ${target.name} ❌`);
+                  const mType = payload.markType || MarkID.CLARITY;
+                  updates[`players.${payload.targetPlayerId}.marks`] = [mType];
+                  addLog(`${actor.name} (${actorRoleLabel}) placed mark on ${target.name}`);
               }
           }
       }
+  }
+
+  // PICKPOCKET MARK STEAL (Can be SWAP action or MARK action)
+  if (effectiveRoleForMark === RoleID.PICKPOCKET && payload.targetPlayerId) {
+      const target = game.players[payload.targetPlayerId];
+      if (target) {
+          if (target.shielded) {
+              addLog(`${actor.name} (${actorRoleLabel}) tried to pickpocket ${target.name} but target was shielded 🛡️`);
+          } else {
+              const actorMarks = actor.marks || [];
+              const targetMarks = target.marks || [];
+              updates[`players.${actor.id}.marks`] = targetMarks;
+              updates[`players.${target.id}.marks`] = actorMarks;
+              addLog(`${actor.name} (${actorRoleLabel}) pickpocketed ${target.name}'s mark 🤏`);
+          }
+      }
+  }
+
+  // GREMLIN: SWAP MARKS OR SWAP CARDS
+  if (effectiveRoleForMark === RoleID.GREMLIN && payload.actionType === 'SWAP' && payload.targetPlayerId && payload.secondTargetPlayerId) {
+      const p1 = game.players[payload.targetPlayerId];
+      const p2 = game.players[payload.secondTargetPlayerId];
+      if (p1 && p2) {
+          if (p1.shielded || p2.shielded) {
+              addLog(`${actor.name} (${actorRoleLabel}) tried to swap between ${p1.name} & ${p2.name} but a target was shielded 🛡️`);
+          } else if (payload.swapType === 'MARKS') {
+              const m1 = p1.marks || [];
+              const m2 = p2.marks || [];
+              updates[`players.${p1.id}.marks`] = m2;
+              updates[`players.${p2.id}.marks`] = m1;
+              addLog(`${actor.name} (${actorRoleLabel}) swapped marks between ${p1.name} & ${p2.name} 🪙`);
+          }
+          // If swapType === 'CARDS', Troublemaker standard swap handles card exchange below
+      }
+  }
+
+  // MARKSMAN VIEW LOG
+  if (effectiveRoleForMark === RoleID.MARKSMAN && payload.targetPlayerId) {
+      const targetCard = game.players[payload.targetPlayerId];
+      const markTarget = payload.viewMarkTargetId ? game.players[payload.viewMarkTargetId] : null;
+      addLog(`${actor.name} (${actorRoleLabel}) viewed ${targetCard?.name}'s card and ${markTarget ? markTarget.name + "'s mark" : "a mark"} 🎯`);
   }
 
   // SENTINEL
@@ -1026,6 +1117,7 @@ export const advanceNightTurn = async (gameId: string) => {
             if (p.originalRole === queueRole) return true;
             if (queueRole === RoleID.WEREWOLF && p.originalRole === RoleID.WEREWOLF_2) return true;
             if (queueRole === RoleID.MASON && p.originalRole === RoleID.MASON_2) return true;
+            if (queueRole === RoleID.VAMPIRE && (p.originalRole === RoleID.THE_MASTER || p.originalRole === RoleID.THE_COUNT)) return true;
             
             const copiedRole = p.copiedRole;
             
@@ -1033,12 +1125,14 @@ export const advanceNightTurn = async (gameId: string) => {
                 if (copiedRole === queueRole) return true;
                 if (queueRole === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
                 if (queueRole === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+                if (queueRole === RoleID.VAMPIRE && (copiedRole === RoleID.THE_MASTER || copiedRole === RoleID.THE_COUNT)) return true;
             }
             
             if (p.originalRole === RoleID.DOPPELGANGER && copiedRole && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole)) {
                 if (copiedRole === queueRole) return true;
                 if (queueRole === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
                 if (queueRole === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+                if (queueRole === RoleID.VAMPIRE && (copiedRole === RoleID.THE_MASTER || copiedRole === RoleID.THE_COUNT)) return true;
             }
             
             return false;
@@ -1245,6 +1339,31 @@ export const finalizeGame = async (gameId: string) => {
        }
    }
    
+   // THE MASTER IMMUNITY CHECK: Cannot be eliminated if any other Vampire is alive
+   const masterPlayer = players.find(p => p.currentRole === RoleID.THE_MASTER);
+   if (masterPlayer && eliminatedIds.includes(masterPlayer.id)) {
+       const otherVampiresAlive = players.some(p => 
+           p.id !== masterPlayer.id &&
+           !eliminatedIds.includes(p.id) &&
+           ([RoleID.VAMPIRE, RoleID.THE_COUNT].includes(p.currentRole) || (p.marks && p.marks.includes(MarkID.VAMPIRE)))
+       );
+       if (otherVampiresAlive) {
+           eliminatedIds = eliminatedIds.filter(id => id !== masterPlayer.id);
+           votePhaseLogs.push(`${masterPlayer.name} (The Master) cannot die while other Vampires live! 🧛‍♂️🦇`);
+       }
+   }
+
+   // MARK OF LOVE: Lovers die together
+   const lovers = players.filter(p => p.marks && p.marks.includes(MarkID.LOVE));
+   if (lovers.length > 1 && lovers.some(l => eliminatedIds.includes(l.id))) {
+       lovers.forEach(l => {
+           if (!eliminatedIds.includes(l.id)) {
+               eliminatedIds.push(l.id);
+               votePhaseLogs.push(`${l.name} died of heartbreak (Mark of Love) 💘`);
+           }
+       });
+   }
+
    // 7. WIN CALCULATION
    let winningTeam = Team.GOOD;
    let winnerDescription = "Villagers Win";
@@ -1257,7 +1376,7 @@ export const finalizeGame = async (gameId: string) => {
    const vampireRoles = [RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT];
    
    const activeEvil = players.filter(p => greaterEvilRoles.includes(p.currentRole));
-   const activeVampires = players.filter(p => vampireRoles.includes(p.currentRole));
+   const activeVampires = players.filter(p => vampireRoles.includes(p.currentRole) || (p.marks && p.marks.includes(MarkID.VAMPIRE)));
    
    // MINION Logic:
    const minions = players.filter(p => {
@@ -1386,7 +1505,61 @@ export const finalizeGame = async (gameId: string) => {
            winnerDescription += ` | ${traitorPlayer.name} (Traitor) loses 🩸`;
        }
    }
-   
+
+   // RENFIELD WIN CHECK (wins if no vampires killed; if no vampires in game, joins good team)
+   const renfield = players.find(p => p.currentRole === RoleID.RENFIELD);
+   if (renfield) {
+       if (activeVampires.length > 0) {
+           const vampireDied = eliminatedIds.some(id => activeVampires.some(v => v.id === id));
+           if (!vampireDied) {
+               winnerDescription += ` | ${renfield.name} (Renfield) wins! 🦇`;
+           } else {
+               winnerDescription += ` | ${renfield.name} (Renfield) loses 🦇`;
+           }
+       }
+   }
+
+   // ASSASSIN WIN CHECK (wins if target with Mark of Assassin is eliminated)
+   const assassin = players.find(p => p.currentRole === RoleID.ASSASSIN);
+   if (assassin) {
+       const assassinTarget = players.find(p => p.marks && p.marks.includes(MarkID.ASSASSIN));
+       if (assassinTarget && eliminatedIds.includes(assassinTarget.id)) {
+           winnerDescription += ` | ${assassin.name} (Assassin) killed target and wins! 🎯`;
+       }
+   }
+
+   // APPRENTICE ASSASSIN WIN CHECK
+   const apprenticeAssassin = players.find(p => p.currentRole === RoleID.APPRENTICE_ASSASSIN);
+   if (apprenticeAssassin) {
+       if (assassin) {
+           if (eliminatedIds.includes(assassin.id)) {
+               winnerDescription += ` | ${apprenticeAssassin.name} (Apprentice Assassin) killed Assassin and wins! 🎯`;
+           }
+       } else {
+           const assassinTarget = players.find(p => p.marks && p.marks.includes(MarkID.ASSASSIN));
+           if (assassinTarget && eliminatedIds.includes(assassinTarget.id)) {
+               winnerDescription += ` | ${apprenticeAssassin.name} (Apprentice Assassin) eliminated target and wins! 🎯`;
+           }
+       }
+   }
+
+   // MARK OF THE TRAITOR CHECK
+   const traitorMarked = players.filter(p => p.marks && p.marks.includes(MarkID.TRAITOR));
+   traitorMarked.forEach(tm => {
+       const teamMateDied = players.some(p => p.id !== tm.id && ROLE_METADATA[p.currentRole]?.team === ROLE_METADATA[tm.currentRole]?.team && eliminatedIds.includes(p.id));
+       if (!eliminatedIds.includes(tm.id) && teamMateDied) {
+           winnerDescription += ` | ${tm.name} (Mark of Traitor) wins! 🗡️`;
+       }
+   });
+
+   // MARK OF THE DISEASE CHECK (Anyone who voted for Diseased or Mark of Disease loses)
+   const diseasedCarrierIds = players.filter(p => p.currentRole === RoleID.DISEASED || (p.marks && p.marks.includes(MarkID.DISEASE))).map(p => p.id);
+   players.forEach(p => {
+       if (p.votedFor && diseasedCarrierIds.includes(p.votedFor)) {
+           votePhaseLogs.push(`${p.name} voted for a Diseased player / Mark of Disease and cannot win! 🤢`);
+       }
+   });
+
    const finalLogs = [...(game.logs || [])];
    votePhaseLogs.forEach(entry => {
        if (!finalLogs.includes(entry)) {

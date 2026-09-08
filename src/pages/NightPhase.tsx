@@ -5,6 +5,9 @@ import { performNightAction, advanceNightTurn, toggleMasonReady, COPYCAT_DEFERRE
 import { ROLE_METADATA } from '../constants';
 import { ARTIFACT_METADATA, ArtifactID, DEFAULT_CURATOR_ARTIFACTS } from '../constants/artifacts';
 import ArtifactsInfoModal from '../components/ArtifactsInfoModal';
+import { MarkID, MARK_METADATA, isMarksSystemActive } from '../constants/marks';
+import MarkToken from '../components/MarkToken';
+import MarksInfoModal from '../components/MarksInfoModal';
 import RoleCard from '../components/RoleCard';
 import RoleIcon from '../components/RoleIcons';
 import SeatingButton from '../components/SeatingButton';
@@ -19,11 +22,11 @@ interface Props {
 // ------------------------------------------------------------------
 const NightCard: React.FC<{ 
     id: string, label: string, role?: RoleID, isCenter?: boolean, 
-    isSelected: boolean, isRevealed: boolean, isSwapping: boolean, isShielded?: boolean, hasArtifact?: boolean,
+    isSelected: boolean, isRevealed: boolean, isSwapping: boolean, isShielded?: boolean, hasArtifact?: boolean, marks?: string[],
     onClick: () => void, disabled: boolean, innerRef?: React.Ref<HTMLButtonElement>, style?: React.CSSProperties,
     className?: string, swapBadge?: string, badgeColor?: 'primary' | 'red' | 'purple' | 'amber'
 }> = ({ 
-    id, label, role, isCenter, isSelected, isRevealed, isSwapping, isShielded, hasArtifact, onClick, disabled, innerRef, style, className,
+    id, label, role, isCenter, isSelected, isRevealed, isSwapping, isShielded, hasArtifact, marks, onClick, disabled, innerRef, style, className,
     swapBadge, badgeColor
 }) => {
     const revealedRole = isRevealed && role ? role : null;
@@ -67,6 +70,15 @@ const NightCard: React.FC<{
               {/* Artifact Token */}
               {hasArtifact && (
                    <div key={`artifact-${id}`} className="absolute -top-2 -left-2 z-30 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500/30 border border-amber-400 flex items-center justify-center text-xs sm:text-sm shadow-[0_0_15px_rgba(245,158,11,0.6)] backdrop-blur-md animate-fade-in" title="Artifact Token">🏺</div>
+              )}
+
+              {/* Marks Token */}
+              {marks && marks.length > 0 && (
+                   <div key={`marks-${id}`} className="absolute -top-2 -right-2 z-30 flex flex-col gap-0.5 animate-fade-in" title="Marked Token">
+                       {marks.map((m, mIdx) => (
+                           <MarkToken key={mIdx} markId={m} size="sm" showLabel={false} />
+                       ))}
+                   </div>
               )}
 
               {/* Swap Feedback Badge */}
@@ -181,6 +193,20 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
   // Swapped target confirmation state (for Witch, Alpha Wolf, etc.)
   const [swappedPlayerId, setSwappedPlayerId] = useState<string | null>(null);
   const [swappedPlayerName, setSwappedPlayerName] = useState<string | null>(null);
+
+  // Gremlin specific states
+  const [gremlinSwapType, setGremlinSwapType] = useState<'CARDS' | 'MARKS'>('CARDS');
+
+  // Marksman specific states
+  const [marksmanMarkPlayerId, setMarksmanMarkPlayerId] = useState<string | null>(null);
+  const [marksmanRevealedMark, setMarksmanRevealedMark] = useState<string | null>(null);
+
+  // Pickpocket stolen mark state
+  const [pickpocketStolenMark, setPickpocketStolenMark] = useState<string | null>(null);
+
+  // Marks modal state
+  const [showMarksModal, setShowMarksModal] = useState<boolean>(false);
+  const [selectedMarkForModal, setSelectedMarkForModal] = useState<string | null>(null);
 
   // Insomniac specific ref
   const autoRevealed = useRef(false);
@@ -304,6 +330,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
       // Handle Grouped Roles
       if (currentRoleID === RoleID.WEREWOLF && me.originalRole === RoleID.WEREWOLF_2) return true;
       if (currentRoleID === RoleID.MASON && me.originalRole === RoleID.MASON_2) return true;
+      if (currentRoleID === RoleID.VAMPIRE && (me.originalRole === RoleID.THE_MASTER || me.originalRole === RoleID.THE_COUNT)) return true;
       
       const copiedRole = me.copiedRole;
       
@@ -311,11 +338,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           if (copiedRole === currentRoleID) return true;
           if (currentRoleID === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
           if (currentRoleID === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+          if (currentRoleID === RoleID.VAMPIRE && (copiedRole === RoleID.THE_MASTER || copiedRole === RoleID.THE_COUNT)) return true;
       }
       if (me.originalRole === RoleID.DOPPELGANGER && copiedRole && DOPPELGANGER_DEFERRED_ROLES.has(copiedRole)) {
           if (copiedRole === currentRoleID) return true;
           if (currentRoleID === RoleID.WEREWOLF && copiedRole === RoleID.WEREWOLF_2) return true;
           if (currentRoleID === RoleID.MASON && copiedRole === RoleID.MASON_2) return true;
+          if (currentRoleID === RoleID.VAMPIRE && (copiedRole === RoleID.THE_MASTER || copiedRole === RoleID.THE_COUNT)) return true;
       }
       return false;
   })();
@@ -456,6 +485,30 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
       return pNightRole === RoleID.MASON || pNightRole === RoleID.MASON_2;
   });
 
+  const isVampireGroup = [RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT].includes(activeRoleID);
+  const vampireAllies = isVampireGroup
+      ? allPlayers.filter(p => {
+          if (p.id === me.id) return false;
+          const pNightRole = getNightRole(p);
+          return [RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT].includes(pNightRole);
+      })
+      : [];
+
+  const isRenfield = activeRoleID === RoleID.RENFIELD;
+  const renfieldVampires = isRenfield
+      ? allPlayers.filter(p => {
+          if (p.id === me.id) return false;
+          const pNightRole = getNightRole(p);
+          const hasVampMark = p.marks && p.marks.includes(MarkID.VAMPIRE);
+          return [RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT].includes(pNightRole) || hasVampMark;
+      })
+      : [];
+
+  const isApprenticeAssassin = activeRoleID === RoleID.APPRENTICE_ASSASSIN;
+  const assassinPlayer = isApprenticeAssassin
+      ? allPlayers.find(p => p.id !== me.id && getNightRole(p) === RoleID.ASSASSIN)
+      : null;
+
   switch (activeRoleID) {
     case RoleID.SEER: maxPlayers = 1; maxCenter = 2; actionBtnText = "REVEAL"; break;
     case RoleID.ROBBER: maxPlayers = 1; actionBtnText = "ROB & VIEW"; break;
@@ -477,13 +530,61 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
       else actionBtnText = "PLACE ARTIFACT";
       break;
     case RoleID.ALPHA_WOLF: maxPlayers = 1; actionBtnText = "SWAP W/ WOLF"; break;
-    case RoleID.CUPID: maxPlayers = 2; actionBtnText = "LINK"; break;
-    case RoleID.DISEASED: maxPlayers = 1; actionBtnText = "INFECT"; break;
-    case RoleID.INSTIGATOR: maxPlayers = 1; actionBtnText = "BETRAY"; break;
-    case RoleID.PRIEST: maxPlayers = 1; actionBtnText = "BLESS"; break;
-    case RoleID.ASSASSIN: maxPlayers = 1; actionBtnText = "MARK"; break;
-    case RoleID.PICKPOCKET: maxPlayers = 1; actionBtnText = "STEAL MARK"; break;
-    case RoleID.GREMLIN: maxPlayers = 2; actionBtnText = "SWAP CARDS"; break;
+    case RoleID.VAMPIRE:
+      maxPlayers = 1;
+      actionBtnText = selectedPlayers.length === 1 ? "GIVE MARK OF THE VAMPIRE 🧛" : "TAP A VILLAGER";
+      break;
+    case RoleID.THE_COUNT:
+      maxPlayers = 1;
+      actionBtnText = selectedPlayers.length === 1 ? "PLACE MARK OF FEAR 😱" : "TAP A VILLAGER";
+      break;
+    case RoleID.RENFIELD:
+      maxPlayers = 0;
+      actionBtnText = "TAKE MARK OF THE BAT 🦇";
+      break;
+    case RoleID.CUPID:
+      maxPlayers = 2;
+      actionBtnText = selectedPlayers.length === 2 ? "LINK LOVERS 💘" : "TAP 2 PLAYERS";
+      break;
+    case RoleID.DISEASED:
+      maxPlayers = 1;
+      actionBtnText = selectedPlayers.length === 1 ? "INFECT NEIGHBOR 🤢" : "TAP A NEIGHBOR";
+      break;
+    case RoleID.INSTIGATOR:
+      maxPlayers = 1;
+      actionBtnText = selectedPlayers.length === 1 ? "GIVE MARK OF TRAITOR 🗡️" : "TAP A PLAYER";
+      break;
+    case RoleID.PRIEST:
+      maxPlayers = 1;
+      actionBtnText = selectedPlayers.length === 1 ? "BLESS SELF & OTHER ⛪" : "BLESS SELF ⛪";
+      break;
+    case RoleID.ASSASSIN:
+      maxPlayers = 1;
+      actionBtnText = selectedPlayers.length === 1 ? "PLACE MARK OF ASSASSIN 🎯" : "TAP TARGET";
+      break;
+    case RoleID.APPRENTICE_ASSASSIN:
+      if (assassinPlayer) {
+          maxPlayers = 0;
+          actionBtnText = "CONTINUE";
+      } else {
+          maxPlayers = 1;
+          actionBtnText = selectedPlayers.length === 1 ? "PLACE MARK OF ASSASSIN 🎯" : "TAP TARGET";
+      }
+      break;
+    case RoleID.PICKPOCKET:
+      maxPlayers = 1;
+      actionBtnText = selectedPlayers.length === 1 ? "STEAL MARK 🤏" : "TAP A PLAYER";
+      break;
+    case RoleID.GREMLIN:
+      maxPlayers = 2;
+      actionBtnText = selectedPlayers.length === 2
+          ? (gremlinSwapType === 'MARKS' ? "SWAP MARKS 🪙" : "SWAP CARDS 🎴")
+          : (gremlinSwapType === 'MARKS' ? "TAP 2 PLAYERS (MARKS)" : "TAP 2 PLAYERS (CARDS)");
+      break;
+    case RoleID.MARKSMAN:
+      maxPlayers = 1;
+      actionBtnText = selectedPlayers.length === 1 ? "VIEW CARD & MARK 🎯" : "TAP PLAYER TO VIEW";
+      break;
     case RoleID.EXPOSER: maxCenter = 1; actionBtnText = "REVEAL"; break;
     case RoleID.THING: maxPlayers = 1; actionBtnText = "TAP"; break;
     case RoleID.NOSTRADAMUS: maxPlayers = 2; actionBtnText = "VIEW FUTURE"; break;
@@ -497,7 +598,6 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
     case RoleID.MASON: case RoleID.MINION: case RoleID.APPRENTICE_TANNER: case RoleID.DREAM_WOLF:
       maxPlayers = 0; actionBtnText = "REVEAL INFO"; break;
     default: 
-      if (['VAMPIRE', 'THE_COUNT', 'MARKSMAN'].includes(activeRoleID)) { maxPlayers = 1; actionBtnText = "ACT"; }
       break;
   }
 
@@ -730,6 +830,43 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           return;
       }
 
+      if (activeRoleID === RoleID.VAMPIRE || activeRoleID === RoleID.THE_COUNT) {
+          const targetNightRole = getNightRole(targetPlayer);
+          if ([RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT].includes(targetNightRole)) {
+              setInfoMessage("🧛 You cannot target a fellow Vampire!");
+              return;
+          }
+      }
+
+      if (activeRoleID === RoleID.DISEASED) {
+          const sorted = allPlayers;
+          const myIdx = sorted.findIndex(p => p.id === me.id);
+          if (myIdx !== -1 && sorted.length >= 2) {
+              const leftIdx = (myIdx - 1 + sorted.length) % sorted.length;
+              const rightIdx = (myIdx + 1) % sorted.length;
+              const isNeighbor = pid === sorted[leftIdx].id || pid === sorted[rightIdx].id;
+              if (!isNeighbor) {
+                  setInfoMessage("🤢 You can only infect your immediate neighbor (left or right)!");
+                  return;
+              }
+          }
+      }
+
+      if (activeRoleID === RoleID.MARKSMAN) {
+          if (selectedPlayers.length === 0) {
+              setSelectedPlayers([pid]);
+              setRevealedIds(prev => ({ ...prev, [pid]: targetPlayer.currentRole }));
+              setMarksmanMarkPlayerId(pid);
+              const tMark = targetPlayer.marks?.[0] || null;
+              setMarksmanRevealedMark(tMark);
+          } else {
+              setMarksmanMarkPlayerId(pid);
+              const tMark = targetPlayer.marks?.[0] || null;
+              setMarksmanRevealedMark(tMark);
+          }
+          return;
+      }
+
       if (maxPlayers > 0) {
           if (activeRoleID === RoleID.SEER) setSelectedCenter([]);
           if (selectedPlayers.includes(pid)) setSelectedPlayers(s => s.filter(id => id !== pid));
@@ -868,6 +1005,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
       if (activeRoleID === RoleID.ALPHA_WOLF) return true; // Just click to swap
       if (activeRoleID === RoleID.PSYCHIC) return true;
       if (activeRoleID === RoleID.CURATOR) return !!selectedArtifactToken && selectedPlayers.length === 1;
+      if (activeRoleID === RoleID.RENFIELD) return true;
+      if (activeRoleID === RoleID.PRIEST) return true;
+      if (activeRoleID === RoleID.APPRENTICE_ASSASSIN) {
+          if (assassinPlayer) return true;
+          return selectedPlayers.length === 1;
+      }
+      if (activeRoleID === RoleID.MARKSMAN) return selectedPlayers.length === 1;
       if (maxPlayers > 0) return selectedPlayers.length === maxPlayers;
       if (maxCenter > 0) return selectedCenter.length === maxCenter;
       return true;
@@ -898,6 +1042,167 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               actionType: 'PLACE_TOKEN',
               targetPlayerId: selectedPlayers[0],
               artifactToken: selectedArtifactToken
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      // NEW MARK AND VAMPIRE ROLES
+      if (activeRoleID === RoleID.VAMPIRE) {
+          if (selectedPlayers.length === 0) return;
+          setStep('ANIMATING');
+          setInfoMessage("Mark of the Vampire given 🧛");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'MARK',
+              markType: MarkID.VAMPIRE,
+              targetPlayerId: selectedPlayers[0]
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.THE_COUNT) {
+          if (selectedPlayers.length === 0) return;
+          setStep('ANIMATING');
+          setInfoMessage("Mark of Fear placed 😱");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'MARK',
+              markType: MarkID.FEAR,
+              targetPlayerId: selectedPlayers[0]
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.RENFIELD) {
+          setStep('ANIMATING');
+          setInfoMessage("Took the Mark of the Bat 🦇");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'MARK',
+              markType: MarkID.BAT,
+              targetPlayerId: me.id
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.CUPID) {
+          if (selectedPlayers.length < 2) return;
+          setStep('ANIMATING');
+          setInfoMessage("Linked with Mark of Love 💘");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'MARK',
+              markType: MarkID.LOVE,
+              targetPlayerId: selectedPlayers[0],
+              secondTargetPlayerId: selectedPlayers[1]
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.DISEASED) {
+          if (selectedPlayers.length === 0) return;
+          setStep('ANIMATING');
+          setInfoMessage("Infected with Mark of Disease 🤢");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'MARK',
+              markType: MarkID.DISEASE,
+              targetPlayerId: selectedPlayers[0]
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.INSTIGATOR) {
+          if (selectedPlayers.length === 0) return;
+          setStep('ANIMATING');
+          setInfoMessage("Placed Mark of the Traitor 🗡️");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'MARK',
+              markType: MarkID.TRAITOR,
+              targetPlayerId: selectedPlayers[0]
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.PRIEST) {
+          setStep('ANIMATING');
+          setInfoMessage("Blessed with Mark of Clarity ⛪");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'MARK',
+              markType: MarkID.CLARITY,
+              targetPlayerId: me.id,
+              secondTargetPlayerId: selectedPlayers[0] || undefined
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.ASSASSIN) {
+          if (selectedPlayers.length === 0) return;
+          setStep('ANIMATING');
+          setInfoMessage("Placed Mark of the Assassin 🎯");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'MARK',
+              markType: MarkID.ASSASSIN,
+              targetPlayerId: selectedPlayers[0]
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.APPRENTICE_ASSASSIN) {
+          if (assassinPlayer) {
+              setStep('FINISHED');
+              return;
+          }
+          if (selectedPlayers.length === 0) return;
+          setStep('ANIMATING');
+          setInfoMessage("Placed Mark of the Assassin 🎯");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'MARK',
+              markType: MarkID.ASSASSIN,
+              targetPlayerId: selectedPlayers[0]
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.PICKPOCKET) {
+          if (selectedPlayers.length === 0) return;
+          const targetPlayer = game.players[selectedPlayers[0]];
+          const stolenMark = targetPlayer?.marks?.[0] || null;
+          setPickpocketStolenMark(stolenMark);
+          setStep('ANIMATING');
+          setInfoMessage(stolenMark ? `Stolen mark: ${MARK_METADATA[stolenMark as MarkID]?.name || stolenMark} 🤏` : "Target had no marks 🤏");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'SWAP',
+              targetPlayerId: selectedPlayers[0]
+          });
+          setStep('FINISHED');
+          return;
+      }
+
+      if (activeRoleID === RoleID.MARKSMAN) {
+          if (selectedPlayers.length === 0) return;
+          setStep('ANIMATING');
+          setInfoMessage("Marksman observation complete 🎯");
+          await performNightAction(game.id, {
+              actorId: me.id,
+              actionType: 'VIEW',
+              targetPlayerId: selectedPlayers[0],
+              viewMarkTargetId: marksmanMarkPlayerId || selectedPlayers[0]
           });
           setStep('FINISHED');
           return;
@@ -939,12 +1244,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                     actorId: me.id,
                     targetPlayerId: id1,
                     secondTargetPlayerId: id2,
-                    actionType: 'SWAP'
+                    actionType: 'SWAP',
+                    swapType: activeRoleID === RoleID.GREMLIN ? gremlinSwapType : 'CARDS'
                 };
                 await performNightAction(game.id, payload as any);
             });
             
-            setInfoMessage("Swap complete");
+            setInfoMessage(activeRoleID === RoleID.GREMLIN && gremlinSwapType === 'MARKS' ? "Marks swapped 🪙" : "Swap complete 🎴");
             setSwappingIds(selectedPlayers);
 
             setTimeout(() => {
@@ -1522,9 +1828,23 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           <div className={`relative z-10 pt-4 pb-2 px-4 text-center border-b border-[#dcf5eb]/8 backdrop-blur-md transform-gpu flex flex-col items-center
              ${(isSquire && squireEvilPlayers.length > 0) || activeRoleID === RoleID.WEREWOLF || activeRoleID === RoleID.MINION || piState.becomeEvil ? 'bg-red-900/20 shadow-[0_0_30px_rgba(153,27,27,0.3)]' : 'bg-[#0d0818]/60'}
           `}>
-              <div className="flex items-center gap-2 sm:gap-3 mb-1">
-                  <RoleIcon role={activeRoleID} className="w-8 h-8" />
-                  <h1 className={`text-base sm:text-lg sm:text-xl font-display font-bold ${(isSquire && squireEvilPlayers.length > 0) || activeRoleID === RoleID.WEREWOLF || activeRoleID === RoleID.MINION || piState.becomeEvil ? 'text-red-500 animate-pulse' : 'text-white'}`}>{headerTitle}</h1>
+              <div className="w-full max-w-2xl flex items-center justify-between mb-1">
+                  <div className="w-16"></div>
+                  <div className="flex items-center gap-2 sm:gap-3">
+                      <RoleIcon role={activeRoleID} className="w-8 h-8" />
+                      <h1 className={`text-base sm:text-lg sm:text-xl font-display font-bold ${(isSquire && squireEvilPlayers.length > 0) || activeRoleID === RoleID.WEREWOLF || activeRoleID === RoleID.MINION || piState.becomeEvil ? 'text-red-500 animate-pulse' : 'text-white'}`}>{headerTitle}</h1>
+                  </div>
+                  <div className="w-16 flex justify-end">
+                      <button
+                          type="button"
+                          onClick={() => { setSelectedMarkForModal(null); setShowMarksModal(true); }}
+                          className="px-2 py-1 text-[11px] rounded-lg bg-red-950/60 border border-red-500/40 text-red-200 hover:bg-red-900/60 font-semibold flex items-center gap-1 transition-all shadow-sm"
+                          title="Marks Reference Guide"
+                      >
+                          <span>Marks</span>
+                          <span className="w-3.5 h-3.5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-black">?</span>
+                      </button>
+                  </div>
               </div>
               <p className="text-gray-400 text-xs">{headerDesc}</p>
           </div>
@@ -1534,6 +1854,116 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               {beholderUI}
               {auraSeerUI}
               {psychicUI}
+
+              {/* VAMPIRE COVEN TEAM ALLIES */}
+              {isVampireGroup && vampireAllies.length > 0 && (
+                  <div className="mt-8 text-center animate-fade-in w-full max-w-md">
+                      <h2 className="text-purple-400 font-bold text-base sm:text-lg mb-3 tracking-widest">VAMPIRE COVEN</h2>
+                      <div className="bg-purple-950/30 border-2 border-purple-600/50 p-4 rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+                          <p className="text-gray-400 text-xs uppercase mb-2">Fellow Vampires</p>
+                          <div className="flex flex-wrap gap-2 justify-center">
+                              {vampireAllies.map(p => (
+                                  <span key={p.id} className="text-base font-bold text-white flex items-center gap-2 bg-purple-900/40 px-3 py-1 rounded-lg border border-purple-500/30">
+                                      {p.name} <span>🧛</span>
+                                  </span>
+                              ))}
+                          </div>
+                      </div>
+                  </div>
+              )}
+
+              {/* RENFIELD ALLIANCE VIEW */}
+              {isRenfield && (
+                  <div className="mt-8 text-center animate-fade-in w-full max-w-md">
+                      <h2 className="text-purple-400 font-bold text-base sm:text-lg mb-3 tracking-widest">YOUR MASTERS (VAMPIRES)</h2>
+                      <div className="bg-purple-950/30 border-2 border-purple-600/50 p-4 rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.3)] mb-4">
+                          {renfieldVampires.length > 0 ? (
+                              <div className="flex flex-wrap gap-2 justify-center">
+                                  {renfieldVampires.map(p => (
+                                      <span key={p.id} className="text-base font-bold text-white bg-purple-900/40 px-3 py-1 rounded-lg border border-purple-500/30 flex items-center gap-1.5">
+                                          {p.name} <span>🧛</span>
+                                      </span>
+                                  ))}
+                              </div>
+                          ) : (
+                              <p className="text-gray-400 italic text-sm">No Vampires detected in the village.</p>
+                          )}
+                      </div>
+                      <p className="text-xs text-purple-300">Tap below to take the Mark of the Bat onto yourself.</p>
+                  </div>
+              )}
+
+              {/* APPRENTICE ASSASSIN VIEW */}
+              {isApprenticeAssassin && (
+                  <div className="mt-8 text-center animate-fade-in w-full max-w-md">
+                      <h2 className="text-red-400 font-bold text-base sm:text-lg mb-3 tracking-widest">MASTER ASSASSIN</h2>
+                      <div className="bg-red-950/30 border-2 border-red-600/50 p-4 rounded-xl shadow-[0_0_20px_rgba(239,68,68,0.3)] mb-4">
+                          {assassinPlayer ? (
+                              <div>
+                                  <span className="text-base sm:text-lg font-bold text-white bg-red-900/40 px-3 py-1 rounded-lg border border-red-500/30 inline-flex items-center gap-1.5">
+                                      {assassinPlayer.name} <span>🗡️</span>
+                                  </span>
+                                  <p className="text-xs text-gray-400 mt-2">You win if the Master Assassin is eliminated.</p>
+                              </div>
+                          ) : (
+                              <div>
+                                  <p className="text-base font-bold text-amber-300">The Assassin is not in the village!</p>
+                                  <p className="text-xs text-gray-400 mt-1">Select a player below to mark with the Mark of the Assassin yourself.</p>
+                              </div>
+                          )}
+                      </div>
+                  </div>
+              )}
+
+              {/* GREMLIN SWAP MODE SELECTOR */}
+              {activeRoleID === RoleID.GREMLIN && step === 'SELECTING' && (
+                  <div className="mt-4 mb-4 flex flex-col items-center animate-fade-in">
+                      <span className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-2">Gremlin Mischief Type</span>
+                      <div className="flex gap-2 p-1 rounded-xl bg-gray-900/80 border border-white/10">
+                          <button
+                              type="button"
+                              onClick={() => { setGremlinSwapType('CARDS'); setSelectedPlayers([]); }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${gremlinSwapType === 'CARDS' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                          >
+                              🎴 Swap 2 Cards
+                          </button>
+                          <button
+                              type="button"
+                              onClick={() => { setGremlinSwapType('MARKS'); setSelectedPlayers([]); }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${gremlinSwapType === 'MARKS' ? 'bg-amber-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                          >
+                              🪙 Swap 2 Marks
+                          </button>
+                      </div>
+                  </div>
+              )}
+
+              {/* PICKPOCKET STOLEN MARK NOTIFICATION */}
+              {activeRoleID === RoleID.PICKPOCKET && pickpocketStolenMark && (
+                  <div className="mt-4 mb-4 p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-center gap-3 animate-fade-in">
+                      <span className="text-xs text-amber-300 font-bold uppercase">Stolen:</span>
+                      <MarkToken markId={pickpocketStolenMark} size="md" showLabel={true} />
+                  </div>
+              )}
+
+              {/* MARKSMAN PROGRESS & RESULT */}
+              {activeRoleID === RoleID.MARKSMAN && (
+                  <div className="mt-4 mb-4 flex flex-col items-center gap-2 animate-fade-in">
+                      <div className="text-xs text-cyan-300 font-semibold text-center">
+                          {selectedPlayers.length === 0 
+                              ? "Step 1: Tap a player to inspect their card"
+                              : !marksmanMarkPlayerId 
+                              ? "Step 2: Tap a player to view their mark token"
+                              : "Ready to confirm observation!"}
+                      </div>
+                      {marksmanRevealedMark && (
+                          <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center gap-2">
+                              <span className="text-xs text-cyan-200 font-bold">Observed Mark:</span>
+                              <MarkToken markId={marksmanRevealedMark} size="sm" showLabel={true} />
+                          </div>
+                      )}
+                  </div>
+              )}
 
               {activeRoleID === RoleID.WEREWOLF && otherEvilPlayers.length > 0 && (
                   <div className="mt-10 text-center animate-fade-in">
@@ -1810,6 +2240,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                                     isSelected={isSelected} isRevealed={!!revealedIds[p.id]} isSwapping={swappingIds.includes(p.id)}
                                     isShielded={showShield}
                                     hasArtifact={showArtifact}
+                                    marks={p.marks}
                                     disabled={step === 'FINISHED' || (p.id === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN, RoleID.CURATOR, RoleID.WITCH].includes(activeRoleID)) || activeRoleID === RoleID.VILLAGE_IDIOT || (activeRoleID === RoleID.CURATOR && !!p.artifact)}
                                     onClick={() => handlePlayerClick(p.id)}
                                     innerRef={(el) => { if (el) itemsRef.current.set(p.id, el); }}
@@ -1905,6 +2336,13 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
               selectedArtifact={curatorSelectedArtifactInfo}
               allowedArtifactIds={game.curatorArtifacts && game.curatorArtifacts.length > 0 ? game.curatorArtifacts : DEFAULT_CURATOR_ARTIFACTS}
               onClose={() => { setCuratorInfoModalOpen(false); setCuratorSelectedArtifactInfo(null); }}
+            />
+          )}
+
+          {showMarksModal && (
+            <MarksInfoModal
+              selectedMark={selectedMarkForModal}
+              onClose={() => { setShowMarksModal(false); setSelectedMarkForModal(null); }}
             />
           )}
       </div>

@@ -74,6 +74,17 @@ export enum Team {
   MINORITY = 'MINORITY' // Renfield
 }
 
+export enum MarkID {
+  VAMPIRE = 'MARK_OF_THE_VAMPIRE',
+  FEAR = 'MARK_OF_FEAR',
+  BAT = 'MARK_OF_THE_BAT',
+  LOVE = 'MARK_OF_LOVE',
+  TRAITOR = 'MARK_OF_THE_TRAITOR',
+  DISEASE = 'MARK_OF_THE_DISEASE',
+  CLARITY = 'MARK_OF_CLARITY',
+  ASSASSIN = 'MARK_OF_THE_ASSASSIN'
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -142,6 +153,9 @@ export interface NightActionPayload {
   actionType: 'VIEW' | 'SWAP' | 'COPY' | 'MARK' | 'PLACE_TOKEN' | 'REVEAL' | 'TAP' | 'ROTATE';
   direction?: 'CLOCKWISE' | 'ANTI-CLOCKWISE';
   artifactToken?: string; // Artifact placed by Curator
+  markType?: string; // Mark placed e.g. MARK_OF_THE_VAMPIRE
+  swapType?: 'CARDS' | 'MARKS'; // For Gremlin
+  viewMarkTargetId?: string; // For Marksman viewing mark
 }
 
 /**
