@@ -7,6 +7,7 @@ import RoleIcon from '../components/RoleIcons';
 import MarkToken from '../components/MarkToken';
 import { useNavigate } from 'react-router-dom';
 import { ROLE_METADATA } from '../constants';
+import { MARK_METADATA } from '../constants/marks';
 
 interface Props {
   game: GameState;
@@ -395,6 +396,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                   {/* Game Event Log: Fluid readable layout, NO nested scroll trap */}
                   {(() => {
                     const uniqueLogs = Array.from(new Set(game.logs || []));
+                    const markedPlayers = players.filter(p => p.marks && p.marks.length > 0);
                     return (
                       <div className="w-full max-w-2xl rounded-2xl p-5 sm:p-6 backdrop-blur-md"
                         style={{
@@ -413,14 +415,60 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                                 </span>
                               )}
                           </div>
+
+                          {/* Marks Summary & Details Section */}
+                          {markedPlayers.length > 0 && (
+                              <div className="mb-4 p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/30">
+                                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                                      <span className="text-[11px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1.5">
+                                          <span>🪙</span> Final Marks & Token Details
+                                      </span>
+                                      <span className="text-[10px] text-amber-300/60 font-mono">
+                                          {markedPlayers.length} marked player{markedPlayers.length > 1 ? 's' : ''}
+                                      </span>
+                                  </div>
+                                  <div className="space-y-2">
+                                      {markedPlayers.map(p => (
+                                          <div key={p.id} className="p-2.5 rounded-lg bg-black/40 border border-white/10 flex flex-col gap-1.5">
+                                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                                      <span>👤</span> {p.name}
+                                                  </span>
+                                                  <div className="flex items-center gap-1.5">
+                                                      {p.marks!.map((mId, mIdx) => (
+                                                          <MarkToken key={mIdx} markId={mId} size="sm" showLabel={true} />
+                                                      ))}
+                                                  </div>
+                                              </div>
+                                              <div className="text-[11px] text-amber-200/80 font-sans leading-relaxed pl-1 border-l border-amber-500/40">
+                                                  {p.marks!.map(mId => {
+                                                      const meta = MARK_METADATA[mId as MarkID];
+                                                      return meta ? `${meta.name}: ${meta.description}` : mId;
+                                                  }).join(' | ')}
+                                              </div>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                          )}
+
                           <div className="space-y-1.5">
                               {uniqueLogs.length > 0 ? (
-                                  (expandedLogs ? uniqueLogs : uniqueLogs.slice(0, 8)).map((log, i) => (
-                                      <div key={i} className="text-xs text-white/90 font-mono border-l-2 border-primary/40 pl-3 py-1.5 bg-white/[0.02] rounded-r flex items-start gap-2">
-                                          <span className="text-[10px] text-white/40 font-mono select-none shrink-0 w-4 text-right">{i + 1}.</span>
-                                          <span className="break-words">{log}</span>
-                                      </div>
-                                  ))
+                                  (expandedLogs ? uniqueLogs : uniqueLogs.slice(0, 8)).map((log, i) => {
+                                      const isMarkLog = log.includes('Mark') || log.includes('mark') || log.includes('🪙');
+                                      return (
+                                          <div key={i} className={`text-xs font-mono pl-3 py-1.5 rounded-r flex items-start gap-2 ${
+                                              isMarkLog 
+                                                  ? 'text-amber-200/95 border-l-2 border-amber-400 bg-amber-500/[0.08]' 
+                                                  : 'text-white/90 border-l-2 border-primary/40 bg-white/[0.02]'
+                                          }`}>
+                                              <span className={`text-[10px] font-mono select-none shrink-0 w-4 text-right ${isMarkLog ? 'text-amber-400/60' : 'text-white/40'}`}>
+                                                  {i + 1}.
+                                              </span>
+                                              <span className="break-words">{log}</span>
+                                          </div>
+                                      );
+                                  })
                               ) : (
                                   <div className="text-white/50 italic text-xs">No events recorded.</div>
                               )}
@@ -428,7 +476,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                                 <div className="pt-2 text-center">
                                   <button 
                                     onClick={() => setExpandedLogs(!expandedLogs)}
-                                    className="text-xs text-primary font-bold hover:underline px-3 py-1 rounded bg-primary/10 border border-primary/20 transition-colors"
+                                    className="text-xs text-primary font-bold hover:underline px-3 py-1 rounded bg-primary/10 border border-primary/20 transition-colors cursor-pointer"
                                   >
                                     {expandedLogs ? 'Show Less Logs ▲' : `Show all ${uniqueLogs.length} logs ▼`}
                                   </button>

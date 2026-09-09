@@ -856,12 +856,9 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           if (selectedPlayers.length === 0) {
               setSelectedPlayers([pid]);
               setRevealedIds(prev => ({ ...prev, [pid]: targetPlayer.currentRole }));
-              setMarksmanMarkPlayerId(pid);
-              const tMark = targetPlayer.marks?.[0] || null;
-              setMarksmanRevealedMark(tMark);
           } else {
               setMarksmanMarkPlayerId(pid);
-              const tMark = targetPlayer.marks?.[0] || null;
+              const tMark = targetPlayer.marks?.[0] || 'NONE';
               setMarksmanRevealedMark(tMark);
           }
           return;
@@ -1011,7 +1008,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
           if (assassinPlayer) return true;
           return selectedPlayers.length === 1;
       }
-      if (activeRoleID === RoleID.MARKSMAN) return selectedPlayers.length === 1;
+      if (activeRoleID === RoleID.MARKSMAN) return selectedPlayers.length === 1 && !!marksmanMarkPlayerId;
       if (maxPlayers > 0) return selectedPlayers.length === maxPlayers;
       if (maxCenter > 0) return selectedCenter.length === maxCenter;
       return true;
@@ -1953,14 +1950,21 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                           {selectedPlayers.length === 0 
                               ? "Step 1: Tap a player to inspect their card"
                               : !marksmanMarkPlayerId 
-                              ? "Step 2: Tap a player to view their mark token"
-                              : "Ready to confirm observation!"}
+                              ? "Step 2: Tap a player to view their mark token (can be same or different player)"
+                              : "Observation complete! Ready to confirm."}
                       </div>
                       {marksmanRevealedMark && (
-                          <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center gap-2">
-                              <span className="text-xs text-cyan-200 font-bold">Observed Mark:</span>
-                              <MarkToken markId={marksmanRevealedMark} size="sm" showLabel={true} />
-                          </div>
+                          marksmanRevealedMark === 'NONE' ? (
+                              <div className="p-2.5 rounded-xl bg-gray-900/60 border border-gray-600/40 flex items-center gap-2">
+                                  <span className="text-xs text-gray-300 font-bold">Observed Mark:</span>
+                                  <span className="text-xs text-gray-400 italic">No mark on this player 🪙</span>
+                              </div>
+                          ) : (
+                              <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center gap-2">
+                                  <span className="text-xs text-cyan-200 font-bold">Observed Mark:</span>
+                                  <MarkToken markId={marksmanRevealedMark} size="sm" showLabel={true} />
+                              </div>
+                          )
                       )}
                   </div>
               )}
@@ -2213,15 +2217,22 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                               const isWitchActive = activeRoleID === RoleID.WITCH;
                               const isAlphaActive = activeRoleID === RoleID.ALPHA_WOLF;
 
+                              const isMarksman = activeRoleID === RoleID.MARKSMAN;
+                              const marksmanBadge = isMarksman && marksmanMarkPlayerId === p.id
+                                  ? (selectedPlayers[0] === p.id ? '🎯 CARD & MARK' : '🎯 MARK')
+                                  : undefined;
+
                               const badgeColor = (isAlphaActive || (isSwappedTarget && isAlphaActive))
                                   ? 'red' 
                                   : (isWitchActive || (isSwappedTarget && isWitchActive)) 
                                   ? 'purple' 
+                                  : marksmanBadge
+                                  ? 'amber'
                                   : undefined;
 
                               const swapBadge = isSwappedTarget 
                                   ? (isAlphaActive ? '🐺 WEREWOLF' : '🔄 SWAPPED')
-                                  : undefined;
+                                  : marksmanBadge;
 
                               const customClass = isSwappedTarget
                                   ? (isAlphaActive
@@ -2233,6 +2244,18 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                                   ? "hover:ring-2 hover:ring-purple-500 hover:shadow-[0_0_15px_rgba(168,85,247,0.5)]"
                                   : "";
 
+                              const playerVisibleMarks = (() => {
+                                  if (activeRoleID === RoleID.MARKSMAN) {
+                                      if (marksmanMarkPlayerId === p.id && marksmanRevealedMark && marksmanRevealedMark !== 'NONE') {
+                                          return [marksmanRevealedMark];
+                                      }
+                                  }
+                                  if (activeRoleID === RoleID.PICKPOCKET && p.id === me.id && pickpocketStolenMark) {
+                                      return [pickpocketStolenMark];
+                                  }
+                                  return undefined;
+                              })();
+
                               return (
                                   <NightCard 
                                     key={p.id}
@@ -2240,7 +2263,7 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                                     isSelected={isSelected} isRevealed={!!revealedIds[p.id]} isSwapping={swappingIds.includes(p.id)}
                                     isShielded={showShield}
                                     hasArtifact={showArtifact}
-                                    marks={p.marks}
+                                    marks={playerVisibleMarks}
                                     disabled={step === 'FINISHED' || (p.id === me.id && ![RoleID.INSOMNIAC, RoleID.GREMLIN, RoleID.PRIEST, RoleID.ASSASSIN, RoleID.MORTICIAN, RoleID.CURATOR, RoleID.WITCH].includes(activeRoleID)) || activeRoleID === RoleID.VILLAGE_IDIOT || (activeRoleID === RoleID.CURATOR && !!p.artifact)}
                                     onClick={() => handlePlayerClick(p.id)}
                                     innerRef={(el) => { if (el) itemsRef.current.set(p.id, el); }}

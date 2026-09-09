@@ -4,7 +4,7 @@ import { collection, doc, setDoc, updateDoc, getDoc, onSnapshot, arrayUnion, add
 import { GameState, GamePhase, RoleID, Player, CenterCard, NightActionPayload, Team } from '../types';
 import { ROLE_METADATA, NIGHT_SEQUENCE } from '../constants';
 import { ArtifactID, ARTIFACT_METADATA, DEFAULT_CURATOR_ARTIFACTS } from '../constants/artifacts';
-import { MarkID, isMarksSystemActive } from '../constants/marks';
+import { MarkID, MARK_METADATA, isMarksSystemActive } from '../constants/marks';
 
 const GAMES_COLLECTION = 'games';
 
@@ -899,7 +899,10 @@ export const performNightAction = async (gameId: string, payload: NightActionPay
   if (effectiveRoleForMark === RoleID.MARKSMAN && payload.targetPlayerId) {
       const targetCard = game.players[payload.targetPlayerId];
       const markTarget = payload.viewMarkTargetId ? game.players[payload.viewMarkTargetId] : null;
-      addLog(`${actor.name} (${actorRoleLabel}) viewed ${targetCard?.name}'s card and ${markTarget ? markTarget.name + "'s mark" : "a mark"} 🎯`);
+      const targetMarkId = markTarget?.marks?.[0];
+      const markMeta = targetMarkId ? MARK_METADATA[targetMarkId as MarkID] : null;
+      const markDetail = markMeta ? `${markMeta.name} ${markMeta.icon} (${markMeta.description})` : 'No Mark';
+      addLog(`${actor.name} (${actorRoleLabel}) viewed ${targetCard?.name}'s card (${ROLE_METADATA[targetCard?.currentRole]?.name || 'Card'}) and ${markTarget?.name}'s mark → ${markDetail} 🎯`);
   }
 
   // SENTINEL
@@ -1559,6 +1562,20 @@ export const finalizeGame = async (gameId: string) => {
            votePhaseLogs.push(`${p.name} voted for a Diseased player / Mark of Disease and cannot win! 🤢`);
        }
    });
+
+   // MARKS SUMMARY & DETAILS LOG ENTRIES
+   const playersWithMarks = players.filter(p => p.marks && p.marks.length > 0);
+   if (playersWithMarks.length > 0) {
+       playersWithMarks.forEach(p => {
+           p.marks!.forEach(mId => {
+               const meta = MARK_METADATA[mId as MarkID];
+               const markName = meta?.name || mId;
+               const markIcon = meta?.icon || '🪙';
+               const markDesc = meta?.description || '';
+               votePhaseLogs.push(`🪙 Mark Active: ${p.name} held ${markName} ${markIcon} — ${markDesc}`);
+           });
+       });
+   }
 
    const finalLogs = [...(game.logs || [])];
    votePhaseLogs.forEach(entry => {
