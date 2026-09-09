@@ -1563,20 +1563,6 @@ export const finalizeGame = async (gameId: string) => {
        }
    });
 
-   // MARKS SUMMARY & DETAILS LOG ENTRIES
-   const playersWithMarks = players.filter(p => p.marks && p.marks.length > 0);
-   if (playersWithMarks.length > 0) {
-       playersWithMarks.forEach(p => {
-           p.marks!.forEach(mId => {
-               const meta = MARK_METADATA[mId as MarkID];
-               const markName = meta?.name || mId;
-               const markIcon = meta?.icon || '🪙';
-               const markDesc = meta?.description || '';
-               votePhaseLogs.push(`🪙 Mark Active: ${p.name} held ${markName} ${markIcon} — ${markDesc}`);
-           });
-       });
-   }
-
    const finalLogs = [...(game.logs || [])];
    votePhaseLogs.forEach(entry => {
        if (!finalLogs.includes(entry)) {

@@ -395,7 +395,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
 
                   {/* Game Event Log: Fluid readable layout, NO nested scroll trap */}
                   {(() => {
-                    const uniqueLogs = Array.from(new Set(game.logs || []));
+                    const uniqueLogs = Array.from(new Set(game.logs || [])).filter(log => !log.includes('Mark Active:'));
                     const markedPlayers = players.filter(p => p.marks && p.marks.length > 0);
                     return (
                       <div className="w-full max-w-2xl rounded-2xl p-5 sm:p-6 backdrop-blur-md"
