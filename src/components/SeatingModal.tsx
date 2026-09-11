@@ -7,9 +7,7 @@ interface Props {
 }
 
 const SeatingModal: React.FC<Props> = ({ players, onClose }) => {
-  const seatedPlayers = players
-    .filter(p => p.seatId !== null && p.seatId !== undefined)
-    .sort((a, b) => a.seatId! - b.seatId!);
+  const seatedPlayers = players.filter(p => p.seatId !== null && p.seatId !== undefined).sort((a, b) => a.seatId! - b.seatId!);
   const totalSeats = seatedPlayers.length;
   const radius = 38;
   const center = 50;
@@ -23,62 +21,59 @@ const SeatingModal: React.FC<Props> = ({ players, onClose }) => {
     };
   };
 
+  const polygonPoints = seatedPlayers.map((_, i) => {
+    const { x, y } = getCoordinates(i, totalSeats);
+    return `${x},${y}`;
+  }).join(' ');
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transform-gpu" />
       <div
-        className="relative z-10 w-full max-w-sm p-6 rounded-3xl bg-[#0c121c] border border-white/10 shadow-2xl text-white select-none"
+        className="relative z-10 w-[90vw] max-w-md p-6 rounded-2xl bg-gray-900/95 border border-white/10 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-colors text-sm font-bold z-20 cursor-pointer"
+          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors text-lg font-bold z-20"
         >
           ✕
         </button>
 
-        <div className="text-center mb-4">
-          <h3 className="text-xs font-mono font-bold tracking-[0.25em] text-[#00e575] uppercase">
-            SEATING ARRANGEMENT
-          </h3>
-          <p className="text-[11px] text-gray-400 mt-0.5">
-            Council seating in clockwise order
-          </p>
-        </div>
+        <h3 className="text-center text-gray-400 text-xs font-bold uppercase tracking-[0.3em] mb-4 font-display">Seating</h3>
 
-        <div className="relative w-full aspect-square max-w-[280px] mx-auto my-2">
-          {/* Concentric ambient circles */}
-          <div className="absolute inset-2 rounded-full border border-dashed border-[#00e575]/20 pointer-events-none" />
-          <div className="absolute inset-6 rounded-full border border-white/5 pointer-events-none" />
+        <div className="relative w-full aspect-square max-w-sm mx-auto">
+          <div className="absolute inset-0 rounded-full bg-black/30 shadow-2xl border border-white/5 transform scale-110" />
 
-          {/* SVG connecting lines */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100">
+          <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40" viewBox="0 0 100 100">
+            <polygon
+              points={polygonPoints}
+              fill="none"
+              stroke="#12b886"
+              strokeWidth="0.5"
+              className="drop-shadow-[0_0_5px_rgba(18,184,134,0.5)]"
+            />
             {seatedPlayers.map((_, i) => {
               const { x, y } = getCoordinates(i, totalSeats);
               return (
                 <line
                   key={`line-${i}`}
-                  x1="50"
-                  y1="50"
-                  x2={x}
-                  y2={y}
-                  stroke="rgba(0, 229, 117, 0.2)"
-                  strokeWidth="0.5"
-                  strokeDasharray="1, 1.5"
+                  x1="50" y1="50"
+                  x2={x} y2={y}
+                  stroke="#12b886"
+                  strokeWidth="0.2"
+                  opacity="0.5"
                 />
               );
             })}
           </svg>
 
-          {/* Center Table Element */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <div className="w-20 h-20 rounded-full border border-[#00e575]/30 flex flex-col items-center justify-center bg-gradient-to-br from-[#121c2b] to-[#0a0e16] shadow-[0_0_20px_rgba(0,229,117,0.15)]">
-              <span className="text-gray-300 font-mono text-[9px] tracking-widest font-bold">COUNCIL</span>
-              <span className="text-[#00e575] font-mono text-[9px] font-bold mt-0.5">TABLE</span>
+            <div className="w-20 h-20 rounded-full border border-primary/20 flex items-center justify-center bg-gradient-to-br from-surface to-background shadow-[0_0_25px_rgba(18,184,134,0.15)]">
+              <span className="text-white/20 font-display text-lg tracking-widest font-bold">ONUW</span>
             </div>
           </div>
 
-          {/* Seated Players */}
           {seatedPlayers.map((p, i) => {
             const { x, y } = getCoordinates(i, totalSeats);
             return (
@@ -87,19 +82,10 @@ const SeatingModal: React.FC<Props> = ({ players, onClose }) => {
                 className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-30"
                 style={{ left: `${x}%`, top: `${y}%` }}
               >
-                <div className="relative w-12 h-12 rounded-full flex items-center justify-center bg-[#111927] border-2 border-[#00e575] shadow-[0_0_12px_rgba(0,229,117,0.3)]">
-                  {p.icon && p.icon.includes('/') ? (
-                    <img src={p.icon} alt={p.name} className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <span className="font-bold text-white text-xs">
-                      {p.icon || p.name?.[0]?.toUpperCase()}
-                    </span>
-                  )}
-                  <div className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full font-mono text-[8px] font-bold bg-[#00e575] text-[#091118] shadow-sm">
-                    #{p.seatId! + 1}
-                  </div>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center border-2 bg-surface border-primary/50 text-moon font-bold text-sm">
+                  {p.name?.[0]?.toUpperCase()}
                 </div>
-                <span className="mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0d1420] text-gray-200 border border-white/10 whitespace-nowrap pointer-events-none truncate max-w-[70px]">
+                <span className="mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface text-moon/80 border border-primary/30 whitespace-nowrap pointer-events-none">
                   {p.name}
                 </span>
               </div>
