@@ -203,6 +203,13 @@ export const advanceToRoles = async (gameId: string) => {
   });
 };
 
+export const returnToLobby = async (gameId: string) => {
+  const gameRef = doc(db, GAMES_COLLECTION, gameId);
+  await updateDoc(gameRef, {
+      phase: GamePhase.LOBBY
+  });
+};
+
 // Replaced updateRoles with a real-time toggle
 export const toggleRoleSelection = async (gameId: string, role: RoleID, isAdding: boolean) => {
     const gameRef = doc(db, GAMES_COLLECTION, gameId);

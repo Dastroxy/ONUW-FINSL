@@ -25,7 +25,7 @@ const GameBoard: React.FC<Props> = ({ totalSeats, players, myId, onSeatClick }) 
 
   const seats = Array.from({ length: totalSeats }).map((_, i) => {
     const { x, y } = getCoordinates(i, totalSeats);
-    const playerInSeat = players.find(p => p.seatId === i);
+    const playerInSeat = players.find(p => p.seatId !== null && p.seatId !== undefined && Number(p.seatId) === i);
     const isMe = playerInSeat?.id === myId;
     
     return (

@@ -6,7 +6,8 @@ import {
   startGameSetup, 
   toggleDealReady, 
   advanceToRoles, 
-  advanceToSeating, 
+  advanceToSeating,
+  returnToLobby, 
   updateCuratorArtifacts 
 } from '../services/firestoreService';
 import GameBoard from '../components/GameBoard';
@@ -29,18 +30,26 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
   const [showArtifactModal, setShowArtifactModal] = useState(false);
   const [activeRoleCategory, setActiveRoleCategory] = useState<string>('ALL');
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   
   const selectedRoles = game.selectedRoles || [];
   const players = (Object.values(game.players) as Player[]).sort((a, b) => a.joined - b.joined);
   const isHost = me.isHost;
 
   const handleSeatClick = async (seatId: number) => {
-    const isTakenByOther = players.some(p => p.seatId === seatId && p.id !== me.id);
+    if (game.phase !== GamePhase.SEATING) return;
+
+    const isTakenByOther = players.some(
+      p => p.seatId !== null && p.seatId !== undefined && Number(p.seatId) === seatId && p.id !== me.id
+    );
     if (isTakenByOther) return;
 
-    const newSeatId = me.seatId === seatId ? null : seatId;
-    if (game.phase === GamePhase.SEATING) {
+    const isMyCurrentSeat = me.seatId !== null && me.seatId !== undefined && Number(me.seatId) === seatId;
+    const newSeatId = isMyCurrentSeat ? null : seatId;
+    try {
       await claimSeat(game.id, me.id, newSeatId);
+    } catch (err) {
+      console.error("Failed to claim seat:", err);
     }
   };
 
@@ -50,28 +59,203 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/#/game/${game.id}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   const MIN_PLAYERS = 3;
   const MAX_PLAYERS = 10;
   const seatedPlayersList = players.filter(p => p.seatId !== null && p.seatId !== undefined);
 
   // ==========================================
-  // PHASE 1: LOBBY & SEATING (Circular Table UI)
+  // PHASE 1: LOBBY PAGE (Villagers Gathering)
   // ==========================================
-  if (game.phase === GamePhase.LOBBY || game.phase === GamePhase.SEATING) {
-    const isSeatingPhase = game.phase === GamePhase.SEATING;
-    const seatedPlayersCount = seatedPlayersList.length;
-    const canStartSeating = players.length >= MIN_PLAYERS && players.length <= MAX_PLAYERS;
-    const canStartGame = seatedPlayersCount >= MIN_PLAYERS && seatedPlayersCount <= MAX_PLAYERS;
-    const totalSeats = Math.max(3, Math.min(MAX_PLAYERS, Math.max(players.length, seatedPlayersCount)));
+  if (game.phase === GamePhase.LOBBY) {
+    const canStartSeating = players.length >= 1; // Allows testing, while showing recommended count
+    const emptySlotsCount = Math.max(0, Math.min(MAX_PLAYERS, Math.max(players.length + 1, 4)) - players.length);
 
     return (
       <div className="flex flex-col items-center justify-between min-h-[100dvh] pt-4 pb-8 px-4 bg-[#0a0e16] font-sans text-white">
         
         {/* Top Header / Room Information */}
         <header className="w-full max-w-lg flex items-center justify-between py-2 border-b border-white/10 z-20">
-          
-          {/* Room Code Badge (Copyable) */}
+          {/* Room Code Badge */}
           <button 
+            type="button"
+            onClick={handleCopyCode}
+            className="flex items-center gap-2 bg-[#121926] hover:bg-[#192436] border border-white/10 hover:border-[#00e575]/40 px-3 py-1.5 rounded-full transition-all cursor-pointer shadow-md"
+            title="Click to copy room code"
+          >
+            <span className="text-gray-400 text-xs font-mono">ROOM</span>
+            <span className="text-[#00e575] font-mono font-bold tracking-widest text-sm">
+              {game.id}
+            </span>
+            <span className="text-xs text-gray-400">
+              {copiedCode ? '✓ Copied' : '⎘'}
+            </span>
+          </button>
+
+          {/* Status Badge */}
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#00e575] animate-pulse"></span>
+            <span className="text-xs font-mono font-bold tracking-wider text-gray-300 uppercase">
+              LOBBY ({players.length}/{MAX_PLAYERS})
+            </span>
+          </div>
+        </header>
+
+        {/* Gathering Hero */}
+        <div className="w-full max-w-lg text-center mt-4 mb-2 z-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#121c2b] border border-[#00e575]/20 text-[#00e575] text-xs font-mono font-bold tracking-wider uppercase mb-2 shadow-sm">
+            <span>✦</span>
+            <span>VILLAGE GATHERING</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold tracking-wide uppercase text-white">
+            GAME LOBBY
+          </h1>
+          <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+            Gather your fellow villagers. The host will initiate council seating once everyone arrives.
+          </p>
+
+          {/* Share Link Banner */}
+          <div className="mt-3 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#131d2c] hover:bg-[#1a273a] border border-[#00e575]/30 text-xs text-[#00e575] font-mono font-bold cursor-pointer transition-all shadow-sm"
+            >
+              <span>{copiedLink ? '✓ LINK COPIED' : '🔗 SHARE INVITE LINK'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Villagers Roster Grid */}
+        <main className="w-full max-w-md flex-1 overflow-y-auto my-3 px-2 z-10">
+          <div className="flex items-center justify-between mb-2.5 px-1">
+            <span className="text-xs font-mono font-bold tracking-wider text-gray-400 uppercase">
+              VILLAGERS IN ROOM ({players.length})
+            </span>
+            <span className="text-[11px] font-mono text-gray-500">
+              {players.length < MIN_PLAYERS ? `${MIN_PLAYERS - players.length} more needed` : 'Ready to seat'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {players.map((p) => {
+              const isCurrent = p.id === me.id;
+              return (
+                <div
+                  key={p.id}
+                  className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
+                    isCurrent
+                      ? 'bg-gradient-to-r from-[#121e2a] to-[#0c141e] border-[#00e575]/60 shadow-[0_0_15px_rgba(0,229,117,0.15)] ring-1 ring-[#00e575]/30'
+                      : 'bg-[#111824] border-white/10'
+                  }`}
+                >
+                  {/* Avatar */}
+                  <div className="relative w-11 h-11 rounded-full flex-shrink-0 bg-[#162234] border border-white/10 overflow-hidden flex items-center justify-center">
+                    {p.icon && p.icon.includes('/') ? (
+                      <img src={p.icon} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-bold text-sm text-white">
+                        {p.icon || p.name?.[0]?.toUpperCase()}
+                      </span>
+                    )}
+                    {p.isHost && (
+                      <div className="absolute -top-0.5 -left-0.5 w-4 h-4 bg-amber-400 text-black text-[9px] font-black rounded-full flex items-center justify-center shadow">
+                        ★
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Player Name and Badges */}
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-sm text-white truncate">
+                        {p.name}
+                      </span>
+                      {isCurrent && (
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#00e575]/20 text-[#00e575] border border-[#00e575]/30">
+                          YOU
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-gray-400">
+                      {p.isHost ? 'Host • Ready' : 'Villager • Ready'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Empty Placeholders */}
+            {Array.from({ length: emptySlotsCount }).map((_, idx) => (
+              <div
+                key={`empty-${idx}`}
+                className="flex items-center gap-3 p-3 rounded-2xl border border-dashed border-white/10 bg-[#0c121c]/40 text-gray-500 select-none"
+              >
+                <div className="w-11 h-11 rounded-full border border-dashed border-white/10 flex items-center justify-center font-mono text-xs text-gray-600">
+                  +
+                </div>
+                <span className="text-xs font-mono italic text-gray-500">
+                  Waiting for villager...
+                </span>
+              </div>
+            ))}
+          </div>
+        </main>
+
+        {/* Footer Action Bar */}
+        <footer className="w-full max-w-sm flex flex-col items-center gap-3 z-20">
+          {isHost ? (
+            <button 
+              type="button"
+              onClick={() => advanceToSeating(game.id)}
+              disabled={!canStartSeating}
+              className="btn-primary-neon w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
+            >
+              <span>START SEATING</span>
+              <span className="font-mono text-xs">
+                ({players.length}/{MIN_PLAYERS} min) ➔
+              </span>
+            </button>
+          ) : (
+            <div className="w-full p-4 rounded-2xl bg-[#111824] border border-white/10 text-center shadow-lg">
+              <p className="text-[#00e575] font-bold text-xs uppercase tracking-widest animate-pulse font-mono">
+                WAITING FOR HOST
+              </p>
+              <p className="text-gray-400 text-xs mt-1">
+                The host will initiate council seating once all players have joined.
+              </p>
+            </div>
+          )}
+        </footer>
+
+      </div>
+    );
+  }
+
+  // ==========================================
+  // PHASE 2: SEATING PAGE (Circular Table UI)
+  // ==========================================
+  if (game.phase === GamePhase.SEATING) {
+    const seatedPlayersCount = seatedPlayersList.length;
+    // Calculate total seats based on players count and any claimed seat IDs
+    const maxClaimedSeat = players.reduce((max, p) => (p.seatId != null ? Math.max(max, Number(p.seatId) + 1) : max), 0);
+    const totalSeats = Math.max(3, Math.min(MAX_PLAYERS, Math.max(players.length, maxClaimedSeat)));
+    const canStartGame = seatedPlayersCount >= 1 && (seatedPlayersCount === players.length || seatedPlayersCount >= MIN_PLAYERS);
+
+    return (
+      <div className="flex flex-col items-center justify-between min-h-[100dvh] pt-4 pb-8 px-4 bg-[#0a0e16] font-sans text-white">
+        
+        {/* Top Header / Room Information */}
+        <header className="w-full max-w-lg flex items-center justify-between py-2 border-b border-white/10 z-20">
+          {/* Room Code Badge */}
+          <button 
+            type="button"
             onClick={handleCopyCode}
             className="flex items-center gap-2 bg-[#121926] hover:bg-[#192436] border border-white/10 hover:border-[#00e575]/40 px-3 py-1.5 rounded-full transition-all cursor-pointer shadow-md"
             title="Click to copy room code"
@@ -89,27 +273,23 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#00e575] animate-pulse"></span>
             <span className="text-xs font-mono font-bold tracking-wider text-gray-300 uppercase">
-              {isSeatingPhase 
-                ? `SEATING (${seatedPlayersCount}/${players.length})` 
-                : `WAITING (${players.length}/${MAX_PLAYERS})`}
+              SEATING ({seatedPlayersCount}/{players.length})
             </span>
           </div>
         </header>
 
-        {/* Phase Subtitle / Host Notice */}
+        {/* Phase Subtitle / Instructions */}
         <div className="w-full max-w-lg text-center mt-3 z-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#121c2b] border border-[#00e575]/20 text-[#00e575] text-xs font-mono font-bold tracking-wider uppercase mb-1 shadow-sm">
             <span>✦</span>
-            <span>{isSeatingPhase ? 'SELECT YOUR SEAT AT THE COUNCIL' : 'GATHERING IN THE VILLAGE'}</span>
+            <span>CHOOSE YOUR SEAT AT THE COUNCIL</span>
           </div>
           <p className="text-xs text-gray-400">
-            {isSeatingPhase 
-              ? 'Tap any glowing empty seat (+) to claim your place' 
-              : 'Wait for all villagers before beginning seat selection'}
+            Tap any glowing empty seat (+) to take your place. Tap again to stand up.
           </p>
         </div>
 
-        {/* Circular Game Board (Matching Image 1) */}
+        {/* Circular Game Board */}
         <main className="w-full max-w-md flex-1 flex items-center justify-center my-2 relative z-10">
           <GameBoard 
             totalSeats={totalSeats} 
@@ -120,43 +300,42 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
         </main>
 
         {/* Bottom Control Bar */}
-        <footer className="w-full max-w-sm flex flex-col items-center gap-3 z-20">
-          
+        <footer className="w-full max-w-sm flex flex-col items-center gap-2.5 z-20">
           {isHost ? (
-            !isSeatingPhase ? (
+            <div className="w-full flex flex-col gap-2">
               <button 
-                onClick={() => advanceToSeating(game.id)}
-                disabled={!canStartSeating}
-                className="btn-primary-neon w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <span>START SEATING</span>
-                <span className="font-mono text-xs">({players.length}/{MIN_PLAYERS}+)</span>
-              </button>
-            ) : (
-              <button 
+                type="button"
                 disabled={!canStartGame}
                 onClick={() => advanceToRoles(game.id)}
-                className="btn-primary-neon w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary-neon w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
               >
                 <span>CHOOSE ROLES</span>
                 <span className="font-mono text-xs">➔</span>
               </button>
-            )
+
+              <button
+                type="button"
+                onClick={() => returnToLobby(game.id)}
+                className="w-full py-2.5 rounded-xl bg-[#111824] hover:bg-[#16202f] border border-white/10 text-xs font-mono font-bold text-gray-400 hover:text-white transition-all cursor-pointer"
+              >
+                ← BACK TO LOBBY
+              </button>
+            </div>
           ) : (
             <div className="w-full p-3.5 rounded-2xl bg-[#111824] border border-white/10 text-center shadow-lg">
               <p className="text-[#00e575] font-bold text-xs uppercase tracking-widest animate-pulse font-mono">
-                {isSeatingPhase ? 'CLAIM YOUR SEAT' : 'WAITING FOR HOST'}
+                {me.seatId !== null && me.seatId !== undefined ? `SEATED IN SEAT #${Number(me.seatId) + 1}` : 'CLAIM YOUR SEAT'}
               </p>
               <p className="text-gray-400 text-xs mt-0.5">
-                {isSeatingPhase 
-                  ? me.seatId !== null ? `You are in Seat #${me.seatId + 1}` : 'Pick any open circle above' 
-                  : 'The host will start seat selection shortly'}
+                {me.seatId !== null && me.seatId !== undefined 
+                  ? 'Waiting for host to proceed to role selection' 
+                  : 'Tap any open circle (+) above to sit down'}
               </p>
             </div>
           )}
 
           {/* Seating modal helper trigger */}
-          {isSeatingPhase && <SeatingButton players={seatedPlayersList} />}
+          <SeatingButton players={seatedPlayersList} />
         </footer>
 
       </div>
@@ -164,7 +343,7 @@ const LobbyPage: React.FC<Props> = ({ game, me }) => {
   }
 
   // ==========================================
-  // PHASE 2: ROLE SELECTION (Matching Image 2)
+  // PHASE 3: ROLE SELECTION (Matching Image 2)
   // ==========================================
   const requiredRolesCount = players.length + 3;
   
