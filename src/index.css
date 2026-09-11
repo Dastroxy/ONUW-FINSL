@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #090614;
-  --color-surface: #130e26;
-  --color-primary: #12b886;
-  --color-primary-light: #20c997;
+  --color-background: #0a0e16;
+  --color-surface: #111824;
+  --color-primary: #00e575;
+  --color-primary-light: #10dc78;
   --color-accent: #8b113b;
   --color-good: #7eb8c9;
   --color-evil: #b91c1c;
   --color-independent: #d4a847;
   --color-minority: #7c3aed;
-  --color-forest: #0c0818;
-  --color-bark: #1a122e;
+  --color-forest: #0d131e;
+  --color-bark: #16202e;
   --color-moon: #dcf5eb;
   --font-sans: 'Rajdhani', sans-serif;
   --font-display: 'Cinzel', serif;
@@ -27,8 +27,8 @@ html, body {
 }
 
 body {
-  background: linear-gradient(160deg, #090614 0%, #10091e 40%, #090614 100%);
-  color: #e8e0d4;
+  background: linear-gradient(165deg, #090d14 0%, #0d121c 45%, #080c12 100%);
+  color: #e2e8f0;
   min-height: 100dvh;
   overflow-x: hidden;
   overflow-y: auto;
@@ -47,30 +47,30 @@ body::before, body::after {
 
 body::before {
   background-image: 
-    radial-gradient(circle at 10% 15%, rgba(220,245,235, 0.6) 1px, transparent 1px),
-    radial-gradient(circle at 30% 45%, rgba(255,255,255, 0.5) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 50% 10%, rgba(220,245,235, 0.7) 2px, transparent 2px),
-    radial-gradient(circle at 70% 35%, rgba(255,255,255, 0.6) 1px, transparent 1px),
-    radial-gradient(circle at 85% 65%, rgba(220,245,235, 0.5) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 20% 80%, rgba(255,255,255, 0.4) 2px, transparent 2px),
-    radial-gradient(circle at 45% 90%, rgba(220,245,235, 0.6) 1px, transparent 1px),
-    radial-gradient(circle at 90% 15%, rgba(255,255,255, 0.5) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 60% 75%, rgba(220,245,235, 0.4) 1px, transparent 1px);
+    radial-gradient(circle at 10% 15%, rgba(0, 229, 117, 0.25) 1px, transparent 1px),
+    radial-gradient(circle at 30% 45%, rgba(255,255,255, 0.4) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 50% 10%, rgba(0, 229, 117, 0.3) 2px, transparent 2px),
+    radial-gradient(circle at 70% 35%, rgba(255,255,255, 0.4) 1px, transparent 1px),
+    radial-gradient(circle at 85% 65%, rgba(0, 229, 117, 0.2) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 20% 80%, rgba(255,255,255, 0.3) 2px, transparent 2px),
+    radial-gradient(circle at 45% 90%, rgba(0, 229, 117, 0.25) 1px, transparent 1px),
+    radial-gradient(circle at 90% 15%, rgba(255,255,255, 0.4) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 60% 75%, rgba(0, 229, 117, 0.2) 1px, transparent 1px);
   background-size: 250px 250px;
-  animation: stars-pulse 5s ease-in-out infinite alternate;
+  animation: stars-pulse 6s ease-in-out infinite alternate;
 }
 
 body::after {
   background-image: 
-    radial-gradient(circle at 15% 30%, rgba(255,255,255, 0.6) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 35% 70%, rgba(220,245,235, 0.5) 1px, transparent 1px),
-    radial-gradient(circle at 65% 20%, rgba(255,255,255, 0.4) 2px, transparent 2px),
-    radial-gradient(circle at 80% 85%, rgba(220,245,235, 0.7) 1px, transparent 1px),
-    radial-gradient(circle at 95% 45%, rgba(255,255,255, 0.5) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 25% 95%, rgba(220,245,235, 0.4) 1px, transparent 1px),
-    radial-gradient(circle at 55% 55%, rgba(255,255,255, 0.6) 1px, transparent 1px);
+    radial-gradient(circle at 15% 30%, rgba(255,255,255, 0.5) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 35% 70%, rgba(0, 229, 117, 0.2) 1px, transparent 1px),
+    radial-gradient(circle at 65% 20%, rgba(255,255,255, 0.3) 2px, transparent 2px),
+    radial-gradient(circle at 80% 85%, rgba(0, 229, 117, 0.25) 1px, transparent 1px),
+    radial-gradient(circle at 95% 45%, rgba(255,255,255, 0.4) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 25% 95%, rgba(0, 229, 117, 0.2) 1px, transparent 1px),
+    radial-gradient(circle at 55% 55%, rgba(255,255,255, 0.5) 1px, transparent 1px);
   background-size: 350px 350px;
-  animation: stars-pulse 7s ease-in-out infinite alternate-reverse;
+  animation: stars-pulse 8s ease-in-out infinite alternate-reverse;
 }
 
 @keyframes stars-pulse {
@@ -87,7 +87,7 @@ button, a, input, select, textarea, [role="button"] {
 }
 
 .card-glow {
-  box-shadow: 0 0 20px rgba(18, 184, 134, 0.4), 0 0 50px rgba(18, 184, 134, 0.15), 0 0 80px rgba(18, 184, 134, 0.08);
+  box-shadow: 0 0 20px rgba(0, 229, 117, 0.35), 0 0 50px rgba(0, 229, 117, 0.15);
   transition: box-shadow 0.4s ease;
   transform: translateZ(0);
 }
@@ -99,18 +99,52 @@ button, a, input, select, textarea, [role="button"] {
 }
 
 .glass-panel {
-  background: rgba(19, 14, 38, 0.65);
+  background: rgba(17, 24, 36, 0.8);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(220, 245, 235, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transform: translateZ(0);
   will-change: transform, backdrop-filter;
 }
 
 .glow-gold {
-  box-shadow: 0 0 12px rgba(220, 245, 235, 0.2), 0 0 30px rgba(18, 184, 134, 0.15);
+  box-shadow: 0 0 12px rgba(220, 245, 235, 0.2), 0 0 30px rgba(0, 229, 117, 0.15);
   border-color: rgba(220, 245, 235, 0.3);
+}
+
+.btn-primary-neon {
+  background: #00e575;
+  color: #052012;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 0 25px rgba(0, 229, 117, 0.35);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.btn-primary-neon:hover {
+  background: #00ff83;
+  box-shadow: 0 0 35px rgba(0, 229, 117, 0.5);
+}
+.btn-primary-neon:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary-dark {
+  background: #131b26;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.btn-secondary-dark:hover {
+  background: #192333;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.btn-secondary-dark:active {
+  transform: scale(0.97);
 }
 
 @keyframes fog-drift {

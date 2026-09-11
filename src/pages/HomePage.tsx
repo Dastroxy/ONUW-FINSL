@@ -1,8 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { createGame, joinGame } from '../services/firestoreService';
 import { useNavigate } from 'react-router-dom';
+import { ROLE_METADATA } from '../constants';
+import { RoleID } from '../types';
 
 const PLAYER_AVATARS = [
   'https://api.dicebear.com/9.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4',
@@ -27,16 +28,24 @@ const HomePage: React.FC = () => {
   const [error, setError] = useState('');
   const [icon, setIcon] = useState('https://api.dicebear.com/9.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4');
   const [showIconSelect, setShowIconSelect] = useState(false);
+  const [showRolesModal, setShowRolesModal] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const generateUniqueId = (baseUid: string) => {
     return `${baseUid}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
   };
 
   const handleCreate = async () => {
-    if (!name || !user) return;
+    if (!name.trim()) {
+      setError('Please enter your name first');
+      nameInputRef.current?.focus();
+      return;
+    }
+    if (!user) return;
     try {
       const hostId = generateUniqueId(user.uid);
-      const code = await createGame(name, hostId, icon);
+      const code = await createGame(name.trim(), hostId, icon);
       localStorage.setItem(`onuw_player_id_${code}`, hostId);
       navigate(`/game/${code}`);
     } catch (e) {
@@ -46,14 +55,23 @@ const HomePage: React.FC = () => {
   };
 
   const handleJoin = async () => {
-    if (!name || !joinCode || !user) return;
+    if (!name.trim()) {
+      setError('Please enter your name first');
+      nameInputRef.current?.focus();
+      return;
+    }
+    if (!joinCode.trim()) {
+      setError('Please enter a room code');
+      return;
+    }
+    if (!user) return;
     try {
-      const code = joinCode.toUpperCase();
+      const code = joinCode.toUpperCase().trim();
       let playerId = localStorage.getItem(`onuw_player_id_${code}`);
       if (!playerId) {
         playerId = generateUniqueId(user.uid);
       }
-      const actualPlayerId = await joinGame(code, name, playerId, icon, user.uid);
+      const actualPlayerId = await joinGame(code, name.trim(), playerId, icon, user.uid);
       localStorage.setItem(`onuw_player_id_${code}`, actualPlayerId || playerId);
       navigate(`/game/${code}`);
     } catch (e: any) {
@@ -62,28 +80,227 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const fogParticles = Array.from({ length: 15 }).map((_, i) => ({
-      top: `${Math.random() * 100}%`,
-      left: `${Math.random() * 100}%`,
-      delay: `${Math.random() * 6}s`,
-      duration: `${8 + Math.random() * 6}s`,
-      size: `${40 + Math.random() * 80}px`,
-      opacity: 0.04 + Math.random() * 0.06
-  }));
-
   return (
-    <div className="min-h-[100dvh] relative overflow-y-auto overflow-x-hidden flex flex-col items-center justify-center p-6 text-center home-bg font-sans">
+    <div className="min-h-[100dvh] relative overflow-y-auto overflow-x-hidden flex flex-col items-center justify-between pb-24 pt-4 px-4 sm:px-6 bg-[#0a0e16] font-sans">
+      
+      {/* Top Bar */}
+      <header className="w-full max-w-md flex items-center justify-between py-2 px-1 z-20">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00e575] to-[#0a6639] p-0.5 flex items-center justify-center shadow-[0_0_12px_rgba(0,229,117,0.4)]">
+            <div className="w-full h-full rounded-full bg-[#0a1219] flex items-center justify-center text-[#00e575] text-xs font-bold">
+              ✦
+            </div>
+          </div>
+          <span className="font-display font-bold tracking-[0.2em] text-sm text-white uppercase">
+            ONE NIGHT
+          </span>
+        </div>
+
+        <button
+          onClick={() => setShowIconSelect(true)}
+          className="w-10 h-10 rounded-full bg-[#121926] border border-white/10 hover:border-[#00e575]/40 flex items-center justify-center text-gray-300 hover:text-white transition-all overflow-hidden shadow-md cursor-pointer"
+          title="Change Avatar"
+        >
+          {icon.includes('/') ? (
+            <img src={icon} alt="avatar" className="w-full h-full object-cover" />
+          ) : (
+            <span>👤</span>
+          )}
+        </button>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="w-full max-w-sm flex flex-col items-center my-auto py-4 z-10">
+        
+        {/* Emblem Hero */}
+        <div className="relative mb-6 flex flex-col items-center">
+          {/* Concentric Glow Circles */}
+          <div className="relative w-36 h-36 sm:w-40 sm:h-40 flex items-center justify-center">
+            {/* Outer soft aura */}
+            <div className="absolute inset-0 rounded-full bg-[#00e575]/10 filter blur-xl animate-pulse"></div>
+            
+            {/* Dashed outer ring */}
+            <div className="absolute inset-1 rounded-full border border-dashed border-[#00e575]/30 animate-[spin_40s_linear_infinite]"></div>
+            
+            {/* Solid middle ring */}
+            <div className="absolute inset-3 rounded-full border border-[#00e575]/40"></div>
+
+            {/* Glowing teal inner moon disc */}
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#10dc78] via-[#0b8449] to-[#04331b] p-1 shadow-[0_0_35px_rgba(0,229,117,0.35)] flex items-center justify-center">
+              <div className="w-full h-full rounded-full bg-[#091118] flex items-center justify-center relative overflow-hidden">
+                {/* Moon crescent & star */}
+                <svg viewBox="0 0 100 100" className="w-16 h-16 text-[#00e575]" fill="currentColor">
+                  <path d="M50 8 C 30 8 16 24 16 45 C 16 68 34 86 57 86 C 68 86 78 82 85 75 C 62 75 44 57 44 34 C 44 23 48 14 55 8 C 53 8 51 8 50 8 Z" opacity="0.9" />
+                  <polygon points="68,22 71,28 77,31 71,34 68,40 65,34 59,31 65,28" fill="#00e575" />
+                  <circle cx="78" cy="48" r="2.5" fill="#00e575" opacity="0.8" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Titles */}
+          <h1 className="font-display font-extrabold text-3xl sm:text-4xl text-white tracking-[0.1em] uppercase mt-3 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+            ONE NIGHT
+          </h1>
+          <div className="text-[#00e575] font-mono font-bold tracking-[0.35em] text-[11px] sm:text-xs uppercase mt-1">
+            ULTIMATE WEREWOLF
+          </div>
+        </div>
+
+        {/* Profile / Playing As Card */}
+        <div className="w-full bg-[#111824] border border-white/10 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-lg mb-5">
+          <button 
+            onClick={() => setShowIconSelect(true)}
+            className="w-12 h-12 rounded-full overflow-hidden border border-[#00e575]/40 hover:border-[#00e575] transition-all shrink-0 bg-[#16202f] cursor-pointer"
+            title="Change Avatar"
+          >
+            {icon.includes('/') ? (
+              <img src={icon} alt="avatar" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-xl flex items-center justify-center h-full">👤</span>
+            )}
+          </button>
+          
+          <div className="flex-1 min-w-0 text-left">
+            <div className="text-[10px] tracking-[0.25em] text-gray-400 font-mono font-bold uppercase">
+              PLAYING AS
+            </div>
+            <input
+              ref={nameInputRef}
+              type="text"
+              placeholder="ENTER YOUR NAME"
+              value={name}
+              maxLength={18}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (error) setError('');
+              }}
+              className="w-full bg-transparent text-white font-bold text-sm sm:text-base tracking-wide uppercase outline-none placeholder:text-gray-500 truncate"
+            />
+          </div>
+
+          <button 
+            onClick={() => nameInputRef.current?.focus()}
+            className="text-gray-400 hover:text-[#00e575] p-2 transition-colors text-sm cursor-pointer"
+            title="Edit name"
+          >
+            ✎
+          </button>
+        </div>
+
+        {/* Primary Action: Create Room */}
+        <button
+          onClick={handleCreate}
+          className="btn-primary-neon w-full py-4 rounded-2xl flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base mb-4"
+        >
+          <span className="text-lg leading-none">+</span>
+          <span>CREATE ROOM</span>
+        </button>
+
+        {/* Divider */}
+        <div className="w-full flex items-center justify-center gap-3 my-2">
+          <div className="flex-1 h-[1px] bg-white/10"></div>
+          <span className="text-[10px] tracking-[0.25em] text-gray-400 font-mono uppercase">
+            OR ENTER VILLAGE
+          </span>
+          <div className="flex-1 h-[1px] bg-white/10"></div>
+        </div>
+
+        {/* Room Code Input Box */}
+        <div className="w-full bg-[#111824] border border-white/10 focus-within:border-[#00e575]/60 rounded-2xl p-2 sm:p-2.5 flex items-center gap-2 shadow-lg mt-3 transition-colors">
+          <span className="text-gray-400 pl-2 text-sm">🔑</span>
+          <input
+            id="roomCodeInput"
+            type="text"
+            maxLength={6}
+            placeholder="ROOM CODE"
+            value={joinCode}
+            autoComplete="off"
+            onChange={(e) => {
+              const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+              setJoinCode(val.slice(0, 6));
+              if (error) setError('');
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleJoin();
+            }}
+            className="flex-1 bg-transparent text-white font-mono tracking-[0.25em] uppercase text-sm sm:text-base outline-none px-1 placeholder:text-gray-500"
+          />
+          <button
+            onClick={handleJoin}
+            disabled={!joinCode.trim()}
+            className="w-10 h-10 rounded-xl bg-[#1b2535] hover:bg-[#253349] disabled:opacity-40 disabled:cursor-not-allowed text-[#00e575] flex items-center justify-center text-base font-bold transition-all shrink-0 cursor-pointer"
+            title="Join Room"
+          >
+            ➔
+          </button>
+        </div>
+
+        {/* Error Notification */}
+        {error && (
+          <div className="mt-4 bg-red-500/20 border border-red-500/40 text-red-200 px-4 py-2 rounded-xl font-medium text-xs text-center animate-fade-in w-full">
+            ⚠️ {error}
+          </div>
+        )}
+
+      </main>
+
+      {/* Bottom Navigation Bar */}
+      <footer className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c1119]/95 backdrop-blur-xl border-t border-white/10 py-2.5 px-4">
+        <div className="max-w-md mx-auto flex items-center justify-around">
+          <button 
+            className="flex flex-col items-center gap-1 text-[#00e575] px-3 py-1 cursor-pointer transition-transform hover:scale-105"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            <span className="text-lg">🏰</span>
+            <span className="text-[10px] font-mono font-bold tracking-widest uppercase">VILLAGE</span>
+          </button>
+
+          <button 
+            className="flex flex-col items-center gap-1 text-gray-400 hover:text-white px-3 py-1 cursor-pointer transition-transform hover:scale-105"
+            onClick={() => setShowRolesModal(true)}
+          >
+            <span className="text-lg">📖</span>
+            <span className="text-[10px] font-mono font-bold tracking-widest uppercase">ROLES</span>
+          </button>
+
+          <button 
+            className="flex flex-col items-center gap-1 text-gray-400 hover:text-white px-3 py-1 cursor-pointer transition-transform hover:scale-105"
+            onClick={() => {
+              nameInputRef.current?.focus();
+            }}
+          >
+            <span className="text-lg">👥</span>
+            <span className="text-[10px] font-mono font-bold tracking-widest uppercase">LOBBY</span>
+          </button>
+
+          <button 
+            className="flex flex-col items-center gap-1 text-gray-400 hover:text-white px-3 py-1 cursor-pointer transition-transform hover:scale-105"
+            onClick={() => setShowRulesModal(true)}
+          >
+            <span className="text-lg">📜</span>
+            <span className="text-[10px] font-mono font-bold tracking-widest uppercase">RULES</span>
+          </button>
+        </div>
+      </footer>
+
+      {/* Avatar Picker Modal */}
       {showIconSelect && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowIconSelect(false)}></div>
-          <div className="relative bg-surface border border-moon/20 rounded-2xl shadow-[0_0_50px_rgba(18,184,134,0.15)] p-6 w-full max-w-xs sm:max-w-md animate-fade-in-up">
-            <h3 className="text-moon font-display text-xl mb-4 text-center">Select Your Avatar</h3>
-            <div className="grid grid-cols-4 gap-2 sm:gap-3">
-              {PLAYER_AVATARS.map(avatar => (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="relative bg-[#111824] border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fade-in">
+            <h3 className="text-white font-display font-bold text-lg mb-4 text-center tracking-wider">
+              SELECT YOUR AVATAR
+            </h3>
+            <div className="grid grid-cols-4 gap-2.5">
+              {PLAYER_AVATARS.map((avatar) => (
                 <button 
                   key={avatar}
                   onClick={() => { setIcon(avatar); setShowIconSelect(false); }}
-                  className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${icon === avatar ? 'border-primary shadow-[0_0_15px_rgba(18,184,134,0.4)] scale-105' : 'border-transparent hover:border-moon/30 hover:scale-105'}`}
+                  className={`aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                    icon === avatar 
+                      ? 'border-[#00e575] shadow-[0_0_15px_rgba(0,229,117,0.4)] scale-105' 
+                      : 'border-white/10 hover:border-white/40'
+                  }`}
                 >
                   <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
                 </button>
@@ -91,447 +308,106 @@ const HomePage: React.FC = () => {
             </div>
             <button 
               onClick={() => setShowIconSelect(false)} 
-              className="mt-6 w-full py-3 rounded-lg bg-forest text-moon hover:bg-bark transition-colors border border-moon/10 font-bold tracking-wider"
+              className="mt-5 w-full py-3 rounded-xl bg-[#172232] text-gray-300 hover:text-white transition-colors border border-white/10 font-bold tracking-wider text-xs uppercase cursor-pointer"
             >
               CLOSE
             </button>
           </div>
         </div>
       )}
-      <style>{`
-        .home-bg {
-          background: linear-gradient(160deg, 
-            #090614 0%, 
-            #0d1028 30%, 
-            #0c0818 55%, 
-            #0a0820 80%,
-            #090614 100%);
-        }
 
-        .home-title {
-          font-family: 'Cinzel', serif;
-          font-weight: 700;
-          font-size: clamp(1.5rem, 8vw, 4rem);
-          letter-spacing: 0.05em;
-          text-shadow: 
-            0 2px 10px rgba(0,0,0,0.9),
-            0 0 40px rgba(18,184,134,0.4),
-            0 0 80px rgba(18,184,134,0.15);
-        }
-
-        .home-subtitle {
-          font-family: 'Cinzel', serif;
-          font-weight: 700;
-          letter-spacing: 0.4em;
-        }
-
-        .home-btn-text {
-          font-family: 'Rajdhani', sans-serif;
-          font-weight: 600;
-          letter-spacing: 0.05em;
-        }
-
-        .fog-container {
-          position: absolute;
-          top: 0; left: 0; right: 0; bottom: 0;
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        .fog-particle {
-          position: absolute;
-          background: radial-gradient(ellipse at center, rgba(140,130,200,0.08) 0%, rgba(180,190,230,0.03) 40%, transparent 70%);
-          border-radius: 50%;
-          animation: fog-drift-home var(--dur) ease-in-out infinite;
-          animation-delay: var(--delay);
-        }
-
-        @keyframes fog-drift-home {
-          0% { transform: translateX(-15%) translateY(0) scale(1); opacity: var(--fog-opacity); }
-          50% { transform: translateX(15%) translateY(-10px) scale(1.1); opacity: calc(var(--fog-opacity) * 1.8); }
-          100% { transform: translateX(-15%) translateY(0) scale(1); opacity: var(--fog-opacity); }
-        }
-
-        .moon-bg {
-          position: absolute;
-          top: 5%; right: 5%;
-          width: 250px; height: 250px;
-          opacity: 0.45;
-          filter: drop-shadow(0 0 20px rgba(18, 184, 134, 0.2));
-          z-index: 1;
-          pointer-events: none;
-          animation: floatMoon 10s ease-in-out infinite;
-        }
-
-        @keyframes floatMoon {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-12px) rotate(2deg); }
-        }
-
-        .moon-glow {
-          position: absolute;
-          top: 1%; right: 1%;
-          width: 340px; height: 340px;
-          background: radial-gradient(circle, 
-            rgba(220,245,235,0.04) 0%, 
-            rgba(18,184,134,0.03) 30%, 
-            rgba(140,130,200,0.02) 55%, 
-            transparent 70%);
-          border-radius: 50%;
-          z-index: 0;
-          pointer-events: none;
-          animation: floatMoon 10s ease-in-out infinite;
-        }
-
-        .moon-outer-ring {
-          position: absolute;
-          top: 2%; right: 2%;
-          width: 320px; height: 320px;
-          border-radius: 50%;
-          border: 1px solid rgba(220,245,235,0.02);
-          box-shadow: 0 0 50px rgba(18,184,134,0.04), inset 0 0 30px rgba(220,245,235,0.01);
-          z-index: 0;
-          pointer-events: none;
-          animation: floatMoon 10s ease-in-out infinite;
-        }
-
-        .icon-stroke {
-            stroke: #12b886;
-            stroke-width: 2;
-            fill: none;
-            filter: drop-shadow(0 0 2px rgba(18,184,134,0.5));
-        }
-
-        .buttons-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 1.5rem;
-          width: 100%;
-          max-width: 550px;
-        }
-        @media (min-width: 640px) {
-          .buttons-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-        }
-
-        .ornate-divider {
-          width: 60%;
-          max-width: 300px;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(220,245,235,0.15), rgba(18,184,134,0.25), rgba(220,245,235,0.15), transparent);
-          position: relative;
-          margin: 0 auto;
-        }
-        .ornate-divider::before {
-          content: '◆';
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          color: rgba(18,184,134,0.3);
-          font-size: 8px;
-          background: #090614;
-          padding: 0 8px;
-        }
-
-        .btn-card {
-          background: rgba(19,14,38,0.6);
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
-          border: 1px solid rgba(220,245,235,0.15);
-          padding: 1.5rem;
-          border-radius: 20px;
-          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.4s ease;
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          justify-content: space-between;
-          min-height: 160px;
-          text-align: left;
-          position: relative;
-          overflow: hidden;
-          z-index: 10;
-          box-shadow: inset 0 1px 0 rgba(220,245,235,0.05), 0 8px 32px rgba(0,0,0,0.4);
-          transform: translateZ(0);
-          will-change: transform, box-shadow;
-        }
-        
-        .btn-card:hover {
-          transform: translateY(-6px) scale(1.02);
-          background: rgba(26,18,46,0.85);
-          border-color: rgba(220,245,235,0.4);
-          box-shadow: 0 15px 40px -10px rgba(0,0,0,0.7), 0 0 30px rgba(18,184,134,0.15), 0 0 60px rgba(140,130,200,0.08), inset 0 1px 0 rgba(220,245,235,0.04);
-        }
-
-        .btn-card::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background: linear-gradient(135deg, rgba(220,245,235,0.05) 0%, rgba(18,184,134,0.04) 50%, transparent 100%);
-          opacity: 0;
-          transition: opacity 0.4s ease;
-          pointer-events: none;
-        }
-        .btn-card:hover::before {
-          opacity: 1;
-        }
-
-        .identity-input {
-          background: rgba(19,14,38,0.4);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(220,245,235,0.04);
-          border-bottom: 2px solid rgba(220,245,235,0.25);
-          color: white;
-          text-align: center;
-          font-weight: 800;
-          font-size: 1rem;
-          @media(min-width: 640px) { font-size: 1.25rem; }
-          padding: 0.8rem;
-          @media(min-width: 640px) { padding: 1rem; }
-          border-radius: 12px;
-          width: 100%;
-          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.4s ease;
-          letter-spacing: 0.1em;
-          font-family: 'Rajdhani', sans-serif;
-          position: relative; 
-          z-index: 20;
-          box-shadow: inset 0 2px 10px rgba(0,0,0,0.2), 0 4px 20px rgba(0,0,0,0.3);
-          transform: translateZ(0);
-          will-change: transform, box-shadow;
-        }
-        .identity-input:focus {
-          outline: none;
-          border-color: #12b886;
-          background: rgba(18,184,134,0.04);
-          box-shadow: 0 8px 25px -5px rgba(18,184,134,0.25), 0 0 0 1px rgba(18,184,134,0.5) inset;
-          transform: translateY(-2px);
-        }
-        .identity-input::placeholder {
-          color: rgba(220,245,235,0.3);
-          font-weight: 500;
-        }
-
-        .join-room-card {
-          display: flex;
-          width: 100%;
-          position: relative;
-          z-index: 100;
-        }
-
-        .room-input-field {
-          width: 100% !important;
-          height: 48px !important;
-          padding: 0 54px 0 16px !important;
-          font-family: 'Rajdhani', sans-serif !important;
-          font-size: 1.1rem !important;
-          text-align: left !important;
-          text-transform: uppercase !important;
-          letter-spacing: 0.15em !important;
-          
-          background: rgba(19,14,38,0.4) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(220,245,235,0.04) !important;
-          border-bottom: 2px solid rgba(220,245,235,0.25) !important;
-          border-radius: 12px !important;
-          color: white !important;
-          outline: none !important;
-          
-          pointer-events: auto !important;
-          user-select: text !important;
-          -webkit-user-select: text !important;
-          transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.4s ease !important;
-          box-shadow: inset 0 2px 10px rgba(0,0,0,0.2) !important;
-          transform: translateZ(0);
-          will-change: transform, box-shadow;
-        }
-
-        .room-input-field:focus {
-          border-color: #12b886 !important;
-          box-shadow: 0 8px 25px -5px rgba(18,184,134,0.25), 0 0 0 1px rgba(18,184,134,0.5) inset !important;
-          background: rgba(18,184,134,0.04) !important;
-        }
-        
-        .room-input-field::placeholder {
-          color: rgba(220,245,235,0.3) !important;
-          font-weight: 500 !important;
-        }
-
-      `}</style>
-      
-      <div className="fog-container">
-          {fogParticles.map((f, i) => (
-              <div 
-                key={i} 
-                className="fog-particle" 
-                style={{ 
-                    top: f.top, 
-                    left: f.left, 
-                    width: f.size, 
-                    height: f.size,
-                    ['--dur' as string]: f.duration,
-                    ['--delay' as string]: f.delay,
-                    ['--fog-opacity' as string]: f.opacity,
-                }}
-              />
-          ))}
-      </div>
-
-      <div className="moon-glow" />
-      <div className="moon-outer-ring" />
-
-      <div className="moon-bg">
-        <svg viewBox="0 0 100 100" fill="none" className="w-full h-full">
-           <defs>
-              <linearGradient id="blood-moon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                 <stop offset="0%" stopColor="#f0e6cc" />
-                 <stop offset="35%" stopColor="#dcf5eb" />
-                 <stop offset="65%" stopColor="#12b886" />
-                 <stop offset="100%" stopColor="#8b113b" />
-              </linearGradient>
-              <radialGradient id="moon-crater-1" cx="30%" cy="30%" r="20%">
-                 <stop offset="0%" stopColor="#000" stopOpacity="0.25" />
-                 <stop offset="100%" stopColor="#000" stopOpacity="0" />
-              </radialGradient>
-              <radialGradient id="moon-crater-2" cx="70%" cy="60%" r="30%">
-                 <stop offset="0%" stopColor="#000" stopOpacity="0.2" />
-                 <stop offset="100%" stopColor="#000" stopOpacity="0" />
-              </radialGradient>
-              <radialGradient id="moon-crater-3" cx="40%" cy="75%" r="15%">
-                 <stop offset="0%" stopColor="#000" stopOpacity="0.15" />
-                 <stop offset="100%" stopColor="#000" stopOpacity="0" />
-              </radialGradient>
-              <filter id="moon-glow" x="-20%" y="-20%" width="140%" height="140%">
-                 <feGaussianBlur stdDeviation="2" result="blur" />
-                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-              <mask id="crescent-mask">
-                 <circle cx="50" cy="50" r="45" fill="white" />
-                 <circle cx="65" cy="40" r="40" fill="black" />
-              </mask>
-           </defs>
-           <g mask="url(#crescent-mask)" filter="url(#moon-glow)">
-              <circle cx="50" cy="50" r="45" fill="url(#blood-moon-gradient)" />
-              <circle cx="50" cy="50" r="45" fill="url(#moon-crater-1)" />
-              <circle cx="50" cy="50" r="45" fill="url(#moon-crater-2)" />
-              <circle cx="50" cy="50" r="45" fill="url(#moon-crater-3)" />
-           </g>
-        </svg>
-      </div>
-
-      <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-6 sm:gap-8">
-        
-        <div className="animate-fade-in-up">
-            <h1 className="home-title text-transparent bg-clip-text bg-gradient-to-b from-moon to-primary-light mb-1">
-                ONE NIGHT
-            </h1>
-            <h2 className="home-subtitle text-xs sm:text-sm md:text-lg text-primary font-bold uppercase mt-1">
-                Ultimate Werewolf
-            </h2>
-        </div>
-
-        <div className="ornate-divider" />
-
-        <div className="w-full max-w-xs sm:max-w-sm animate-fade-in-up flex gap-2 sm:gap-3" style={{ animationDelay: '0.1s' }}>
-            <div className="relative">
+      {/* Roles Modal */}
+      {showRolesModal && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowRolesModal(false)}
+        >
+          <div 
+            className="w-full max-w-lg max-h-[80vh] flex flex-col bg-[#111824] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-4 sm:p-5 border-b border-white/10 bg-[#0d131e]">
+              <div>
+                <h3 className="text-base sm:text-lg font-display font-bold text-white tracking-wider">
+                  ALL VILLAGE ROLES
+                </h3>
+                <p className="text-xs text-gray-400">Discover role abilities and alignments</p>
+              </div>
               <button 
-                onClick={() => setShowIconSelect(true)}
-                className="identity-input !p-0 !w-[54px] !h-[54px] sm:!w-[64px] sm:!h-[64px] flex-shrink-0 flex items-center justify-center hover:bg-surface/60 transition-colors overflow-hidden rounded-xl border-2 border-transparent hover:border-primary/50"
-                style={{ marginBottom: 0 }}
+                onClick={() => setShowRolesModal(false)}
+                className="w-8 h-8 rounded-full bg-[#1b2535] hover:bg-[#253349] text-gray-300 flex items-center justify-center text-sm font-bold cursor-pointer"
               >
-                {icon.includes('/') ? <img src={icon} alt="avatar" className="w-full h-full object-cover rounded-xl" /> : icon}
+                ✕
               </button>
             </div>
-            
-            <input
-              type="text"
-              placeholder="ENTER YOUR NAME"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="identity-input flex-1"
-            />
-        </div>
-
-        <div className="ornate-divider" />
-
-        <div className="buttons-grid animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            <button
-                onClick={handleCreate}
-                disabled={!name}
-                className="btn-card group w-full"
-            >
-                <div className="mb-2 group-hover:scale-110 transition-transform duration-300">
-                   <svg viewBox="0 0 24 24" className="w-10 h-10 icon-stroke">
-                       <rect x="5" y="3" width="14" height="18" rx="2" />
-                       <circle cx="12" cy="12" r="3" />
-                       <path d="M12 9v6" />
-                       <path d="M9 12h6" />
-                   </svg>
-                </div>
-                <div>
-                    <div className="text-xl font-bold text-white mb-0.5 home-btn-text">Create Room</div>
-                    <div className="text-xs text-moon/50 font-medium">Host a new game session</div>
-                </div>
-                <div className="absolute top-4 right-4 text-white/10 group-hover:text-primary/30 transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                </div>
-            </button>
-            
-            <div className="btn-card w-full cursor-default">
-                <div className="flex justify-between w-full">
-                    <div className="mb-2">
-                       <svg viewBox="0 0 24 24" className="w-10 h-10 icon-stroke">
-                           <circle cx="12" cy="8" r="3" />
-                           <path d="M7 20v-2c0-2.2 2.2-4 5-4s5 1.8 5 4v2" />
-                           <path d="M19 10c1.1 0 2 .9 2 2" />
-                           <path d="M22 20v-1c0-1.5-1-2.7-2.5-3.5" />
-                           <path d="M5 10c-1.1 0-2 .9-2 2" />
-                           <path d="M2 20v-1c0-1.5 1-2.7 2.5-3.5" />
-                       </svg>
+            <div className="overflow-y-auto p-4 sm:p-5 space-y-3">
+              {Object.keys(ROLE_METADATA).map((k) => {
+                const meta = ROLE_METADATA[k as RoleID];
+                return (
+                  <div key={k} className="p-3 rounded-xl bg-[#151e2b] border border-white/5 flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-[#1a2636] flex items-center justify-center shrink-0 text-sm font-bold text-[#00e575]">
+                      ✦
                     </div>
-                </div>
-                
-                <div className="w-full">
-                    <div className="text-xl font-bold text-white mb-2 home-btn-text">Join Room</div>
-                    
-                    <div className="join-room-card">
-                        <input
-                            id="roomCodeInput"
-                            type="text"
-                            maxLength={6}
-                            placeholder="CODE"
-                            value={joinCode}
-                            autoComplete="off"
-                            onChange={(e) => {
-                                const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                                setJoinCode(val.slice(0, 6));
-                            }}
-                            className="room-input-field"
-                        />
-                        <button
-                            onClick={handleJoin}
-                            disabled={!name || !joinCode}
-                            className="absolute right-1 top-1 bottom-1 w-10 bg-primary hover:bg-primary-light text-white rounded-[10px] font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xl shadow-[0_0_15px_rgba(18,184,134,0.3)] border border-primary/50 pointer-events-auto"
-                        >
-                            →
-                        </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-white font-bold text-sm tracking-wide">{meta.name}</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded uppercase font-bold ${
+                          meta.team === 'GOOD' ? 'bg-blue-500/20 text-blue-300' :
+                          meta.team === 'EVIL' ? 'bg-red-500/20 text-red-300' :
+                          'bg-amber-500/20 text-amber-300'
+                        }`}>
+                          {meta.team}
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-xs mt-1 leading-relaxed">{meta.description}</p>
                     </div>
-                </div>
+                  </div>
+                );
+              })}
             </div>
+          </div>
         </div>
-        
-        {error && (
-            <div className="animate-bounce bg-red-500/20 border border-red-500/50 text-red-200 px-6 py-2 rounded-full font-bold text-xs backdrop-blur-sm transform-gpu">
-                ⚠️ {error}
+      )}
+
+      {/* Rules Modal */}
+      {showRulesModal && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowRulesModal(false)}
+        >
+          <div 
+            className="w-full max-w-md max-h-[80vh] flex flex-col bg-[#111824] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-4 sm:p-5 border-b border-white/10 bg-[#0d131e]">
+              <h3 className="text-base sm:text-lg font-display font-bold text-white tracking-wider">
+                VILLAGE RULES
+              </h3>
+              <button 
+                onClick={() => setShowRulesModal(false)}
+                className="w-8 h-8 rounded-full bg-[#1b2535] hover:bg-[#253349] text-gray-300 flex items-center justify-center text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-        )}
-        
-        <div className="text-moon/20 text-[10px] font-mono tracking-widest mt-4">
-            EST. MMXXV
+            <div className="overflow-y-auto p-4 sm:p-5 space-y-4 text-xs text-gray-300 leading-relaxed">
+              <div className="p-3 bg-[#151e2b] rounded-xl border border-white/5">
+                <span className="text-[#00e575] font-bold block mb-1 uppercase font-mono">1. The Night Phase</span>
+                Everyone goes to sleep. Certain roles wake up in a specific order and perform their special night actions to gather information or manipulate cards and marks.
+              </div>
+              <div className="p-3 bg-[#151e2b] rounded-xl border border-white/5">
+                <span className="text-[#00e575] font-bold block mb-1 uppercase font-mono">2. Daybreak & Discussion</span>
+                Everyone wakes up. You have a limited timer to discuss, accuse, bluff, and deduce who holds which role.
+              </div>
+              <div className="p-3 bg-[#151e2b] rounded-xl border border-white/5">
+                <span className="text-[#00e575] font-bold block mb-1 uppercase font-mono">3. The Vote</span>
+                All players point and vote simultaneously. The player(s) with the most votes are eliminated. Village wins if at least one Werewolf or Vampire is slain!
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
     </div>
   );
 };
