@@ -1832,15 +1832,17 @@ const NightPhase: React.FC<Props> = ({ game, me }) => {
                       <h1 className={`text-base sm:text-lg sm:text-xl font-display font-bold ${(isSquire && squireEvilPlayers.length > 0) || activeRoleID === RoleID.WEREWOLF || activeRoleID === RoleID.MINION || piState.becomeEvil ? 'text-red-500 animate-pulse' : 'text-white'}`}>{headerTitle}</h1>
                   </div>
                   <div className="w-16 flex justify-end">
-                      <button
-                          type="button"
-                          onClick={() => { setSelectedMarkForModal(null); setShowMarksModal(true); }}
-                          className="px-2 py-1 text-[11px] rounded-lg bg-red-950/60 border border-red-500/40 text-red-200 hover:bg-red-900/60 font-semibold flex items-center gap-1 transition-all shadow-sm"
-                          title="Marks Reference Guide"
-                      >
-                          <span>Marks</span>
-                          <span className="w-3.5 h-3.5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-black">?</span>
-                      </button>
+                      {isMarksSystemActive(game.selectedRoles) && (
+                          <button
+                              type="button"
+                              onClick={() => { setSelectedMarkForModal(null); setShowMarksModal(true); }}
+                              className="px-2 py-1 text-[11px] rounded-lg bg-red-950/60 border border-red-500/40 text-red-200 hover:bg-red-900/60 font-semibold flex items-center gap-1 transition-all shadow-sm"
+                              title="Marks Reference Guide"
+                          >
+                              <span>Marks</span>
+                              <span className="w-3.5 h-3.5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-black">?</span>
+                          </button>
+                      )}
                   </div>
               </div>
               <p className="text-gray-400 text-xs">{headerDesc}</p>

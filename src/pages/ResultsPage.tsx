@@ -7,7 +7,7 @@ import RoleIcon from '../components/RoleIcons';
 import MarkToken from '../components/MarkToken';
 import { useNavigate } from 'react-router-dom';
 import { ROLE_METADATA } from '../constants';
-import { MARK_METADATA } from '../constants/marks';
+import { MARK_METADATA, isMarksSystemActive } from '../constants/marks';
 
 interface Props {
   game: GameState;
@@ -82,6 +82,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
     });
   };
 
+  const isMarksActive = isMarksSystemActive(game.selectedRoles);
   const players = Object.values(game.players) as Player[];
   const eliminated = game.eliminatedIds || [];
 
@@ -90,25 +91,29 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
       const w: Player[] = [];
       const l: Player[] = [];
 
+      const getPlayerTeam = (pl: Player): Team => {
+          if (isMarksActive && pl.marks && pl.marks.includes(MarkID.VAMPIRE)) {
+              return Team.EVIL;
+          }
+          if (pl.currentRole === RoleID.SQUIRE || pl.currentRole === RoleID.MINION) {
+              return Team.EVIL;
+          }
+          if (pl.currentRole === RoleID.TANNER || pl.currentRole === RoleID.APPRENTICE_TANNER) {
+              return Team.INDEPENDENT;
+          }
+          if (pl.originalRole === RoleID.CURSED && (pl.currentRole === RoleID.WEREWOLF || pl.currentRole === RoleID.VAMPIRE)) {
+              return Team.EVIL;
+          }
+          if ((pl.originalRole === RoleID.NOSTRADAMUS || ((pl.originalRole === RoleID.DOPPELGANGER || pl.originalRole === RoleID.COPYCAT) && pl.currentRole === RoleID.NOSTRADAMUS)) && pl.nostradamusRole) {
+              const adoptedMeta = ROLE_METADATA[pl.nostradamusRole];
+              if (adoptedMeta) return adoptedMeta.team;
+          }
+          return ROLE_METADATA[pl.currentRole]?.team || Team.GOOD;
+      };
+
       players.forEach(p => {
           let won = false;
-          const meta = ROLE_METADATA[p.currentRole];
-          let pTeam = meta.team;
-          
-          // Squire is always evil team
-          if (p.currentRole === RoleID.SQUIRE) {
-             pTeam = Team.EVIL;
-          }
-
-          // Cursed conversion: if originalRole was CURSED but currentRole changed, use current team
-          if (p.originalRole === RoleID.CURSED && p.currentRole !== RoleID.CURSED) {
-             pTeam = ROLE_METADATA[p.currentRole].team;
-          }
-
-          // Mark of the Vampire conversion
-          if (p.marks && p.marks.includes(MarkID.VAMPIRE)) {
-             pTeam = Team.EVIL;
-          }
+          const pTeam = getPlayerTeam(p);
 
           // Nostradamus override
           if ((p.originalRole === RoleID.NOSTRADAMUS || ((p.originalRole === RoleID.DOPPELGANGER || p.originalRole === RoleID.COPYCAT) && p.currentRole === RoleID.NOSTRADAMUS)) && p.nostradamusRole) {
@@ -158,55 +163,63 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
           // Renfield override (wins if no vampires died; joins village if no vampires in game)
           if (p.currentRole === RoleID.RENFIELD) {
               const vampireRoles = [RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT];
-              const vampires = players.filter(pl => vampireRoles.includes(pl.currentRole) || (pl.marks && pl.marks.includes(MarkID.VAMPIRE)));
+              const vampires = players.filter(pl => vampireRoles.includes(pl.currentRole) || (isMarksActive && pl.marks && pl.marks.includes(MarkID.VAMPIRE)));
               if (vampires.length > 0) {
                   const vampireDied = eliminated.some(id => vampires.some(v => v.id === id));
                   won = !vampireDied;
               }
           }
 
-          // Assassin override
-          if (p.currentRole === RoleID.ASSASSIN) {
-              const target = players.find(pl => pl.marks && pl.marks.includes(MarkID.ASSASSIN));
-              if (target && eliminated.includes(target.id)) {
-                  won = true;
-              }
-          }
-
-          // Apprentice Assassin override
-          if (p.currentRole === RoleID.APPRENTICE_ASSASSIN) {
-              const assassin = players.find(pl => pl.currentRole === RoleID.ASSASSIN);
-              if (assassin) {
-                  if (eliminated.includes(assassin.id)) won = true;
-              } else {
+          if (isMarksActive) {
+              // Assassin override
+              if (p.currentRole === RoleID.ASSASSIN) {
                   const target = players.find(pl => pl.marks && pl.marks.includes(MarkID.ASSASSIN));
-                  if (target && eliminated.includes(target.id)) won = true;
+                  if (target && eliminated.includes(target.id)) {
+                      won = true;
+                  }
               }
-          }
 
-          // Lovers override (Mark of Love: both win if both survive)
-          if (p.marks && p.marks.includes(MarkID.LOVE)) {
-              const lovers = players.filter(pl => pl.marks && pl.marks.includes(MarkID.LOVE));
-              const anyLoverDied = lovers.some(l => eliminated.includes(l.id));
-              if (!anyLoverDied && lovers.length > 1) {
-                  won = true;
-              } else if (anyLoverDied) {
+              // Apprentice Assassin override
+              if (p.currentRole === RoleID.APPRENTICE_ASSASSIN) {
+                  const assassin = players.find(pl => pl.currentRole === RoleID.ASSASSIN);
+                  if (assassin) {
+                      if (eliminated.includes(assassin.id)) won = true;
+                  } else {
+                      const target = players.find(pl => pl.marks && pl.marks.includes(MarkID.ASSASSIN));
+                      if (target && eliminated.includes(target.id)) won = true;
+                  }
+              }
+
+              // Lovers override (Mark of Love: both win if both survive)
+              if (p.marks && p.marks.includes(MarkID.LOVE)) {
+                  const lovers = players.filter(pl => pl.marks && pl.marks.includes(MarkID.LOVE));
+                  const anyLoverDied = lovers.some(l => eliminated.includes(l.id));
+                  if (!anyLoverDied && lovers.length > 1) {
+                      won = true;
+                  } else if (anyLoverDied) {
+                      won = false;
+                  }
+              }
+
+              // Mark of the Traitor override (wins if teammate died and self survived)
+              if (p.marks && p.marks.includes(MarkID.TRAITOR)) {
+                  const tmTeam = pTeam;
+                  const teammates = players.filter(pl => pl.id !== p.id && getPlayerTeam(pl) === tmTeam);
+                  if (teammates.length > 0) {
+                      const teamMateDied = teammates.some(pl => eliminated.includes(pl.id));
+                      if (!eliminated.includes(p.id) && teamMateDied) {
+                          won = true;
+                      } else {
+                          won = false;
+                      }
+                  }
+              }
+
+              // Mark of the Disease penalty: anyone who voted for Diseased or Mark of Disease cannot win
+              const diseasedCarrierIds = players.filter(pl => pl.currentRole === RoleID.DISEASED || (pl.marks && pl.marks.includes(MarkID.DISEASE))).map(pl => pl.id);
+              if (p.votedFor && diseasedCarrierIds.includes(p.votedFor)) {
                   won = false;
               }
-          }
-
-          // Mark of the Traitor override (wins if teammate died and self survived)
-          if (p.marks && p.marks.includes(MarkID.TRAITOR)) {
-              const teamMateDied = players.some(pl => pl.id !== p.id && ROLE_METADATA[pl.currentRole]?.team === pTeam && eliminated.includes(pl.id));
-              if (!eliminated.includes(p.id) && teamMateDied) {
-                  won = true;
-              }
-          }
-
-          // Mark of the Disease penalty: anyone who voted for Diseased or Mark of Disease cannot win
-          const diseasedCarrierIds = players.filter(pl => pl.currentRole === RoleID.DISEASED || (pl.marks && pl.marks.includes(MarkID.DISEASE))).map(pl => pl.id);
-          if (p.votedFor && diseasedCarrierIds.includes(p.votedFor)) {
-              won = false;
           }
 
           if (won) w.push(p);
@@ -262,7 +275,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                              <RoleIcon role={p.currentRole} className="w-5 h-5 sm:w-6 sm:h-6" />
                              {ROLE_METADATA[p.currentRole]?.name}
                          </div>
-                         {p.marks && p.marks.length > 0 && (
+                         {isMarksActive && p.marks && p.marks.length > 0 && (
                              <div className="flex flex-wrap gap-1 justify-center mt-1.5">
                                  {p.marks.map((m, mIdx) => (
                                      <MarkToken key={mIdx} markId={m} size="sm" showLabel={true} />
@@ -396,7 +409,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                   {/* Game Event Log: Fluid readable layout, NO nested scroll trap */}
                   {(() => {
                     const uniqueLogs = Array.from(new Set(game.logs || [])).filter(log => !log.includes('Mark Active:'));
-                    const markedPlayers = players.filter(p => p.marks && p.marks.length > 0);
+                    const markedPlayers = isMarksActive ? players.filter(p => p.marks && p.marks.length > 0) : [];
                     return (
                       <div className="w-full max-w-2xl rounded-2xl p-5 sm:p-6 backdrop-blur-md"
                         style={{
@@ -417,7 +430,7 @@ const ResultsPage: React.FC<Props> = ({ game, me }) => {
                           </div>
 
                           {/* Marks Summary & Details Section */}
-                          {markedPlayers.length > 0 && (
+                          {isMarksActive && markedPlayers.length > 0 && (
                               <div className="mb-4 p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/30">
                                   <div className="flex items-center justify-between gap-2 mb-2.5">
                                       <span className="text-[11px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1.5">

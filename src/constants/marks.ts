@@ -132,6 +132,6 @@ export const ROLES_REQUIRING_MARKS = new Set<RoleID>([
   RoleID.GREMLIN
 ]);
 
-export const isMarksSystemActive = (selectedRoles: RoleID[]): boolean => {
-  return selectedRoles.some(r => ROLES_REQUIRING_MARKS.has(r));
+export const isMarksSystemActive = (selectedRoles?: RoleID[]): boolean => {
+  return !!selectedRoles && selectedRoles.some(r => ROLES_REQUIRING_MARKS.has(r));
 };

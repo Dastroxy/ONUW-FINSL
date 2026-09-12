@@ -8,7 +8,7 @@ import RolesInfoButton from '../components/RolesInfoButton';
 import SeatingButton from '../components/SeatingButton';
 import { ROLE_METADATA } from '../constants';
 import { ARTIFACT_METADATA, ArtifactID, DEFAULT_CURATOR_ARTIFACTS } from '../constants/artifacts';
-import { MARK_METADATA } from '../constants/marks';
+import { MARK_METADATA, isMarksSystemActive } from '../constants/marks';
 import ArtifactsInfoModal from '../components/ArtifactsInfoModal';
 import MarkToken from '../components/MarkToken';
 import MarksInfoModal from '../components/MarksInfoModal';
@@ -24,6 +24,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
   const [selectedArtifactForModal, setSelectedArtifactForModal] = useState<string | null>(null);
   const [showMarksModal, setShowMarksModal] = useState<boolean>(false);
   const [selectedMarkForModal, setSelectedMarkForModal] = useState<MarkID | null>(null);
+  const isMarksActive = isMarksSystemActive(game.selectedRoles);
   
   // Timer Sync
   useEffect(() => {
@@ -184,7 +185,7 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
           )}
 
           {/* PERSONAL MARKS NOTIFICATION */}
-          {me.marks && me.marks.length > 0 && (
+          {isMarksActive && me.marks && me.marks.length > 0 && (
               <div className="relative z-20 mt-4 w-full max-w-md p-3.5 rounded-2xl bg-purple-950/70 border border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.3)] backdrop-blur-md flex flex-col gap-2 animate-fade-in-up">
                   <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -403,14 +404,16 @@ const DiscussionPage: React.FC<Props> = ({ game, me }) => {
           <SeatingButton players={allPlayers} />
 
           {/* Floating Marks Info Button */}
-          <button
-              onClick={() => { setSelectedMarkForModal(null); setShowMarksModal(true); }}
-              className="fixed bottom-40 right-4 sm:bottom-40 sm:right-6 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-purple-950/90 border border-purple-500/50 backdrop-blur-md transform-gpu text-purple-200 hover:text-white font-black text-sm shadow-[0_4px_20px_rgba(0,0,0,0.6)] transition-all hover:bg-purple-900/50 hover:scale-105 active:scale-95 flex items-center justify-center"
-              aria-label="Show Marks Info"
-              title="View Marks Reference Guide"
-          >
-              🏷️
-          </button>
+          {isMarksActive && (
+              <button
+                  onClick={() => { setSelectedMarkForModal(null); setShowMarksModal(true); }}
+                  className="fixed bottom-40 right-4 sm:bottom-40 sm:right-6 z-30 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-purple-950/90 border border-purple-500/50 backdrop-blur-md transform-gpu text-purple-200 hover:text-white font-black text-sm shadow-[0_4px_20px_rgba(0,0,0,0.6)] transition-all hover:bg-purple-900/50 hover:scale-105 active:scale-95 flex items-center justify-center"
+                  aria-label="Show Marks Info"
+                  title="View Marks Reference Guide"
+              >
+                  🏷️
+              </button>
+          )}
 
           {showArtifactModal && (
               <ArtifactsInfoModal

@@ -277,13 +277,15 @@ export const startGameSetup = async (gameId: string) => {
       : DEFAULT_CURATOR_ARTIFACTS;
   }
 
+  const marksActive = isMarksSystemActive(game.selectedRoles);
+
   playerIds.forEach((pid, index) => {
     const role = shuffledRoles[index];
     updates[`players.${pid}.originalRole`] = role;
     updates[`players.${pid}.currentRole`] = role;
     updates[`players.${pid}.copiedRole`] = null;
     updates[`players.${pid}.votedFor`] = null;
-    updates[`players.${pid}.marks`] = ['MARK_OF_CLARITY']; // "all players automatically receive a Mark of Clarity"
+    updates[`players.${pid}.marks`] = marksActive ? [MarkID.CLARITY] : [];
     updates[`players.${pid}.shielded`] = false;
     updates[`players.${pid}.isRevealed`] = false;
     updates[`players.${pid}.revealedRole`] = null;
@@ -1342,13 +1344,15 @@ export const finalizeGame = async (gameId: string) => {
        }
    }
    
+   const marksActive = isMarksSystemActive(game.selectedRoles);
+
    // THE MASTER IMMUNITY CHECK: Cannot be eliminated if any other Vampire is alive
    const masterPlayer = players.find(p => p.currentRole === RoleID.THE_MASTER);
    if (masterPlayer && eliminatedIds.includes(masterPlayer.id)) {
        const otherVampiresAlive = players.some(p => 
            p.id !== masterPlayer.id &&
            !eliminatedIds.includes(p.id) &&
-           ([RoleID.VAMPIRE, RoleID.THE_COUNT].includes(p.currentRole) || (p.marks && p.marks.includes(MarkID.VAMPIRE)))
+           ([RoleID.VAMPIRE, RoleID.THE_COUNT].includes(p.currentRole) || (marksActive && p.marks && p.marks.includes(MarkID.VAMPIRE)))
        );
        if (otherVampiresAlive) {
            eliminatedIds = eliminatedIds.filter(id => id !== masterPlayer.id);
@@ -1357,7 +1361,7 @@ export const finalizeGame = async (gameId: string) => {
    }
 
    // MARK OF LOVE: Lovers die together
-   const lovers = players.filter(p => p.marks && p.marks.includes(MarkID.LOVE));
+   const lovers = marksActive ? players.filter(p => p.marks && p.marks.includes(MarkID.LOVE)) : [];
    if (lovers.length > 1 && lovers.some(l => eliminatedIds.includes(l.id))) {
        lovers.forEach(l => {
            if (!eliminatedIds.includes(l.id)) {
@@ -1370,6 +1374,18 @@ export const finalizeGame = async (gameId: string) => {
    // 7. WIN CALCULATION
    let winningTeam = Team.GOOD;
    let winnerDescription = "Villagers Win";
+
+   const getEffectiveTeam = (p: Player): Team => {
+       if (marksActive && p.marks && p.marks.includes(MarkID.VAMPIRE)) return Team.EVIL;
+       if (p.currentRole === RoleID.SQUIRE || p.currentRole === RoleID.MINION) return Team.EVIL;
+       if (p.currentRole === RoleID.TANNER || p.currentRole === RoleID.APPRENTICE_TANNER) return Team.INDEPENDENT;
+       if (p.originalRole === RoleID.CURSED && (p.currentRole === RoleID.WEREWOLF || p.currentRole === RoleID.VAMPIRE)) return Team.EVIL;
+       if ((p.originalRole === RoleID.NOSTRADAMUS || ((p.originalRole === RoleID.DOPPELGANGER || p.originalRole === RoleID.COPYCAT) && p.currentRole === RoleID.NOSTRADAMUS)) && p.nostradamusRole) {
+           const adopted = ROLE_METADATA[p.nostradamusRole];
+           if (adopted) return adopted.team;
+       }
+       return ROLE_METADATA[p.currentRole]?.team || Team.GOOD;
+   };
    
    // Identify if any Evil roles are present in the game (at the end of the night)
    const greaterEvilRoles = [
@@ -1379,7 +1395,7 @@ export const finalizeGame = async (gameId: string) => {
    const vampireRoles = [RoleID.VAMPIRE, RoleID.THE_MASTER, RoleID.THE_COUNT];
    
    const activeEvil = players.filter(p => greaterEvilRoles.includes(p.currentRole));
-   const activeVampires = players.filter(p => vampireRoles.includes(p.currentRole) || (p.marks && p.marks.includes(MarkID.VAMPIRE)));
+   const activeVampires = players.filter(p => vampireRoles.includes(p.currentRole) || (marksActive && p.marks && p.marks.includes(MarkID.VAMPIRE)));
    
    // MINION Logic:
    const minions = players.filter(p => {
@@ -1522,46 +1538,57 @@ export const finalizeGame = async (gameId: string) => {
        }
    }
 
-   // ASSASSIN WIN CHECK (wins if target with Mark of Assassin is eliminated)
-   const assassin = players.find(p => p.currentRole === RoleID.ASSASSIN);
-   if (assassin) {
-       const assassinTarget = players.find(p => p.marks && p.marks.includes(MarkID.ASSASSIN));
-       if (assassinTarget && eliminatedIds.includes(assassinTarget.id)) {
-           winnerDescription += ` | ${assassin.name} (Assassin) killed target and wins! 🎯`;
-       }
-   }
-
-   // APPRENTICE ASSASSIN WIN CHECK
-   const apprenticeAssassin = players.find(p => p.currentRole === RoleID.APPRENTICE_ASSASSIN);
-   if (apprenticeAssassin) {
+   if (marksActive) {
+       // ASSASSIN WIN CHECK (wins if target with Mark of Assassin is eliminated)
+       const assassin = players.find(p => p.currentRole === RoleID.ASSASSIN);
        if (assassin) {
-           if (eliminatedIds.includes(assassin.id)) {
-               winnerDescription += ` | ${apprenticeAssassin.name} (Apprentice Assassin) killed Assassin and wins! 🎯`;
-           }
-       } else {
            const assassinTarget = players.find(p => p.marks && p.marks.includes(MarkID.ASSASSIN));
            if (assassinTarget && eliminatedIds.includes(assassinTarget.id)) {
-               winnerDescription += ` | ${apprenticeAssassin.name} (Apprentice Assassin) eliminated target and wins! 🎯`;
+               winnerDescription += ` | ${assassin.name} (Assassin) killed target and wins! 🎯`;
            }
        }
+
+       // APPRENTICE ASSASSIN WIN CHECK
+       const apprenticeAssassin = players.find(p => p.currentRole === RoleID.APPRENTICE_ASSASSIN);
+       if (apprenticeAssassin) {
+           if (assassin) {
+               if (eliminatedIds.includes(assassin.id)) {
+                   winnerDescription += ` | ${apprenticeAssassin.name} (Apprentice Assassin) killed Assassin and wins! 🎯`;
+               }
+           } else {
+               const assassinTarget = players.find(p => p.marks && p.marks.includes(MarkID.ASSASSIN));
+               if (assassinTarget && eliminatedIds.includes(assassinTarget.id)) {
+                   winnerDescription += ` | ${apprenticeAssassin.name} (Apprentice Assassin) eliminated target and wins! 🎯`;
+               }
+           }
+       }
+
+       // MARK OF THE TRAITOR CHECK
+       const traitorMarked = players.filter(p => p.marks && p.marks.includes(MarkID.TRAITOR));
+       traitorMarked.forEach(tm => {
+           const tmTeam = getEffectiveTeam(tm);
+           const teammates = players.filter(p => p.id !== tm.id && getEffectiveTeam(p) === tmTeam);
+           const teamMateDied = teammates.some(p => eliminatedIds.includes(p.id));
+           const selfDied = eliminatedIds.includes(tm.id);
+           if (teammates.length > 0) {
+               if (!selfDied && teamMateDied) {
+                   winnerDescription += ` | ${tm.name} (Mark of Traitor) wins! 🗡️`;
+                   votePhaseLogs.push(`${tm.name} (Mark of Traitor) wins because a teammate died! 🗡️`);
+               } else {
+                   winnerDescription += ` | ${tm.name} (Mark of Traitor) loses 🗡️`;
+                   votePhaseLogs.push(`${tm.name} (Mark of Traitor) lost (needed a teammate to die and to survive) 🗡️`);
+               }
+           }
+       });
+
+       // MARK OF THE DISEASE CHECK (Anyone who voted for Diseased or Mark of Disease loses)
+       const diseasedCarrierIds = players.filter(p => p.currentRole === RoleID.DISEASED || (p.marks && p.marks.includes(MarkID.DISEASE))).map(p => p.id);
+       players.forEach(p => {
+           if (p.votedFor && diseasedCarrierIds.includes(p.votedFor)) {
+               votePhaseLogs.push(`${p.name} voted for a Diseased player / Mark of Disease and cannot win! 🤢`);
+           }
+       });
    }
-
-   // MARK OF THE TRAITOR CHECK
-   const traitorMarked = players.filter(p => p.marks && p.marks.includes(MarkID.TRAITOR));
-   traitorMarked.forEach(tm => {
-       const teamMateDied = players.some(p => p.id !== tm.id && ROLE_METADATA[p.currentRole]?.team === ROLE_METADATA[tm.currentRole]?.team && eliminatedIds.includes(p.id));
-       if (!eliminatedIds.includes(tm.id) && teamMateDied) {
-           winnerDescription += ` | ${tm.name} (Mark of Traitor) wins! 🗡️`;
-       }
-   });
-
-   // MARK OF THE DISEASE CHECK (Anyone who voted for Diseased or Mark of Disease loses)
-   const diseasedCarrierIds = players.filter(p => p.currentRole === RoleID.DISEASED || (p.marks && p.marks.includes(MarkID.DISEASE))).map(p => p.id);
-   players.forEach(p => {
-       if (p.votedFor && diseasedCarrierIds.includes(p.votedFor)) {
-           votePhaseLogs.push(`${p.name} voted for a Diseased player / Mark of Disease and cannot win! 🤢`);
-       }
-   });
 
    const finalLogs = [...(game.logs || [])];
    votePhaseLogs.forEach(entry => {
